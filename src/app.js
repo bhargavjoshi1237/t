@@ -15,7 +15,7 @@ app.get('/get/user/:username', (req, res) => {
   if (xop) {
 
   const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
-  db.one(`SELECT * FROM data  WHERE username = '${xop}';`)
+  db.one(`SELECT * FROM users  WHERE username = '${xop}';`)
   .then((data) => {  
     let op = JSON.parse(JSON.stringify(data))
     res.json(op)
