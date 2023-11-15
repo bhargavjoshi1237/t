@@ -1,0 +1,6 @@
+[build]
+  command = "npm install" # Replace with your build command if necessary
+  publish = "/" # Replace with your Express app's public directory
+
+[dev]
+  command = "npm run dev" # Replace with your start command for local development
