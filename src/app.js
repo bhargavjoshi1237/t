@@ -40,13 +40,9 @@ app.get('/', async (req, res) => {
 res.json("hello")
 });
 
-// app.post('/', async (req, res) => {
 
-  
 
-// })
-
-app.get('/set/usert/:username/', async (req, res) => {
+app.get('/set/user/:username/', async (req, res) => {
   const name = req.params.username;  
   const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
   db.one(`INSERT INTO users (username, "Name", tickets, location, celsius, notifications, pro, pfp)
@@ -60,19 +56,27 @@ app.get('/set/usert/:username/', async (req, res) => {
 });
 
 
-// app.get('/get/user/:username/', async (req, res) => {
-//   const name = req.params.username;  
-//   const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
-//   db.one(`SELECT * FROM user_profile  WHERE username = '${name}';`)
-//   .then((data) => {  
-//     let op = JSON.parse(JSON.stringify(data))
-//     res.json(op)
-//   })
-//   .catch((error) => {console.log('ERROR:', error) })
-// });
+app.get('/set/notification/:username/', async (req, res) => {
+  const name = req.params.username;  
+  const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
+  db.one(`UPDATE users  SET notifications = CASE      WHEN notifications = true THEN false      ELSE true  END  WHERE username = '${name}' RETURNING *;`)
+  .then((data) => {  
+    let op = JSON.parse(JSON.stringify(data))
+    res.json(op)
+  })
+  .catch((error) => {console.log('ERROR:', error) })
+});
 
-
-
+app.get('/set/unit/:username/', async (req, res) => {
+  const name = req.params.username;  
+  const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
+  db.one(`UPDATE users  SET celsius = CASE      WHEN celsius = true THEN false      ELSE true  END  WHERE username = '${name}' RETURNING *;`)
+  .then((data) => {  
+    let op = JSON.parse(JSON.stringify(data))
+    res.json(op)
+  })
+  .catch((error) => {console.log('ERROR:', error) })
+});
 
 
 module.exports = app;
