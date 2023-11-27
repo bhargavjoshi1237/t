@@ -1,4 +1,5 @@
 const express = require('express');
+const fetch = require('node-fetch');
 const req = require('express/lib/request');
 const { Pool } = require('pg');
 const pgp = require('pg-promise')(/* options */)
