@@ -1,5 +1,4 @@
 const express = require('express');
-const fetch = require('node-fetch');
 const req = require('express/lib/request');
 const { Pool } = require('pg');
 const pgp = require('pg-promise')(/* options */)
@@ -79,22 +78,5 @@ app.get('/set/unit/:username/', async (req, res) => {
   .catch((error) => {console.log('ERROR:', error) })
 });
 
-const fetchDataAndLog = async () => {
-  try {
-    console.log("calling")
-    const response = await fetch('http://oga.onrender.com/');
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
 
-    const data = await response.json();
-    console.log('Response:', data);
-  } catch (error) {
-    console.error('Error fetching data:', error);
-  }
-};
-fetchDataAndLog();
-
-const intervalId = setInterval(fetchDataAndLog, 60000);
 module.exports = app;
