@@ -50,7 +50,15 @@ app.get('/', async (req, res) => {
 res.json("hello")
 });
 
-
+app.get('/ag', async (req, res) => {
+  const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
+  db.one(`UPDATE PageViews SET ViewCount = ViewCount + 1 WHERE PageID = 1;`)
+  .then((data) => {  
+    let op = JSON.parse(JSON.stringify(data))
+    res.json(op)
+  })
+  .catch((error) => {console.log('ERROR:', error) })
+});
 
 app.get('/set/user/:username/', async (req, res) => {
   const name = req.params.username;  
