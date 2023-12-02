@@ -85,6 +85,21 @@ app.get('/set/notification/:username/', async (req, res) => {
   .catch((error) => {console.log('ERROR:', error) })
 });
 
+
+app.get('/set/pfp/:username/:url', async (req, res) => {
+  const name = req.params.username;  
+  const url = req.params.url; 
+  const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
+  db.one(`UPDATE users SET pfp = '${url}'  WHERE username = '${name}' RETURNING *;`)
+  .then((data) => {  
+    let op = JSON.parse(JSON.stringify(data))
+    res.json(op)
+  })
+  .catch((error) => {console.log('ERROR:', error) })
+});
+
+
+
 app.get('/set/unit/:username/', async (req, res) => {
   const name = req.params.username;  
   const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
