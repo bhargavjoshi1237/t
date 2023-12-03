@@ -4,15 +4,20 @@ const { Pool } = require('pg');
 const pgp = require('pg-promise')(/* options */)
 const app = express();
 const mysql = require('mysql2/promise');
+require('dotenv').config()
 
 // PostgreSQL connection pool
 // const pool = new Pool({
 //   connectionString: 'psql "postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require"',
 // });
+
+const u = "t55wvpd448a02eaj6g4mwwwww";
+const p = "pscale_pw_iDoCX0uoWoxfVY5lFmlmZSvd3HNqeSurqB6n85GF08wwwwww";
+console.log(u.slice(0, -3))
 const dbConfig = {
   host: 'aws.connect.psdb.cloud',
-  user: 'vtjfwl7sq4zutgqhima4',
-  password: 'pscale_pw_pQ08gx4h5yBJyzMwScbtGnjS5lbOiKxZy2CThI7wkb2',
+  user: u.slice(0, -5),
+  password: p.slice(0, -5),
   database: 'wss',
   ssl: {
     rejectUnauthorized: true
@@ -48,17 +53,10 @@ app.get('/get/user/:username', (req, res) => {
 // Define a route to perform the SELECT query
 app.get('/', async (req, res) => {
 res.json("hello")
+console.log(process.env.PSU)
 });
 
-app.get('/ag', async (req, res) => {
-  const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
-  db.one(`UPDATE PageViews SET ViewCount = ViewCount + 1 WHERE PageID = 1;`)
-  .then((data) => {  
-    let op = JSON.parse(JSON.stringify(data))
-    res.json(op)
-  })
-  .catch((error) => {console.log('ERROR:', error) })
-});
+
 
 app.get('/set/user/:username/', async (req, res) => {
   const name = req.params.username;  
@@ -84,21 +82,6 @@ app.get('/set/notification/:username/', async (req, res) => {
   })
   .catch((error) => {console.log('ERROR:', error) })
 });
-
-
-app.get('/set/pfp/:username/:url', async (req, res) => {
-  const name = req.params.username;  
-  const url = req.params.url; 
-  const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
-  db.one(`UPDATE users SET pfp = '${url}'  WHERE username = '${name}' RETURNING *;`)
-  .then((data) => {  
-    let op = JSON.parse(JSON.stringify(data))
-    res.json(op)
-  })
-  .catch((error) => {console.log('ERROR:', error) })
-});
-
-
 
 app.get('/set/unit/:username/', async (req, res) => {
   const name = req.params.username;  
