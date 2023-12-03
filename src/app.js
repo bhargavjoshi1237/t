@@ -4,7 +4,7 @@ const { Pool } = require('pg');
 const pgp = require('pg-promise')(/* options */)
 const app = express();
 const mysql = require('mysql2/promise');
-
+require('dotenv').config()
 
 // PostgreSQL connection pool
 // const pool = new Pool({
@@ -171,7 +171,7 @@ app.get('/get/ticket/id/:id', async (req, res) => {
     const connection = await mysql.createConnection(dbConfig);
 
     // Example query to select data based on the username
-    const [rows, fields] = await connection.execute(`SELECT id FROM ticket_data WHERE id = '${id}'`);
+    const [rows, fields] = await connection.execute(`SELECT * FROM ticket_data WHERE id = '${name}'`);
 
     // Capture the end time
     const endTime = new Date();
