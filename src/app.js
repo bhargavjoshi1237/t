@@ -11,8 +11,8 @@ const mysql = require('mysql2/promise');
 // });
 const dbConfig = {
   host: 'aws.connect.psdb.cloud',
-  user: 'r3ccbvu6wce95sr2v67s',
-  password: 'pscale_pw_y7n3T03iQ6aJU9Efa46jcfbAgpY24YgHKPGRJPhR7ng',
+  user: 'vtjfwl7sq4zutgqhima4',
+  password: 'pscale_pw_pQ08gx4h5yBJyzMwScbtGnjS5lbOiKxZy2CThI7wkb2',
   database: 'wss',
   ssl: {
     rejectUnauthorized: true
