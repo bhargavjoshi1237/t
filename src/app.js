@@ -4,7 +4,7 @@ const { Pool } = require('pg');
 const pgp = require('pg-promise')(/* options */)
 const app = express();
 const mysql = require('mysql2/promise');
-require('dotenv').config()
+
 
 // PostgreSQL connection pool
 // const pool = new Pool({
