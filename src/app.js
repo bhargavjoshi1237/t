@@ -178,5 +178,37 @@ app.get('/get/ticket/location/:username', async (req, res) => {
 });
 
 
+app.get('/get/ticket/id/:id', async (req, res) => {
+  const name = req.params.id;
+  try {
+    // Capture the start time
+    const startTime = new Date();
+
+    // Establish a connection to the database
+    const connection = await mysql.createConnection(dbConfig);
+
+    // Example query to select data based on the username
+    const [rows, fields] = await connection.execute(`SELECT id FROM ticket_data WHERE id = '${id}'`);
+
+    // Capture the end time
+    const endTime = new Date();
+
+    // Calculate the response time in milliseconds
+    const responseTime = endTime - startTime;
+
+    // Close the database connection
+    await connection.end();
+
+    // Log the response time
+    console.log(`Database response time: ${responseTime} ms`);
+
+    // Send the data as a JSON response
+    res.json(rows);
+  } catch (error) {
+    // Handle errors
+    console.error('Error fetching data from the database:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
 
 module.exports = app;
