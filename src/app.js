@@ -58,6 +58,20 @@ console.log(process.env.PSU)
 
 
 
+app.get('/set/create/:username/', async (req, res) => {
+  const name = req.params.username;  
+  const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
+  db.one(`INSERT INTO users (username) VALUES (${name}) RETURNING * ;`)
+  .then((data) => {  
+    let op = JSON.parse(JSON.stringify(data))
+    res.json(op)
+  })
+  .catch((error) => {console.log('ERROR:', error) })
+});
+
+
+
+
 app.get('/set/user/:username/', async (req, res) => {
   const name = req.params.username;  
   const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
