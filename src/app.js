@@ -223,7 +223,7 @@ app.get('/get/ticket/id/:id', async (req, res) => {
 app.get('/set/location/:username/:city/:contry', async (req, res) => {
   const name = req.params.username;  
   const city = req.params.city;  
-  const contry = req.params.contr;  
+  const contry = req.params.contry;  
   const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
   db.one(`UPDATE users SET location = '{"country": "${contry}", "city": "${city}"}' WHERE username = '${name}' RETURNING *;`)
   .then((data) => {  
