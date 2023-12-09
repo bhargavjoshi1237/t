@@ -71,6 +71,23 @@ app.get('/create/:username/', async (req, res) => {
 
 
 
+
+
+app.get('/set/pfp/:username/:data', async (req, res) => {
+  const name = req.params.username;  
+  const pfpid = req.params.data;  
+  const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
+  db.one(`UPDATE users SET pfp = '${pfpid}' WHERE username = '${name}' RETURNING * ;`)
+  .then((data) => {  
+    let op = JSON.parse(JSON.stringify(data))
+    res.json(op)
+  })
+  .catch((error) => {console.log('ERROR:', error) })
+});
+
+
+
+
 app.get('/set/:username/:realname', async (req, res) => {
   const name = req.params.username;  
   const realname = req.params.realname;  
