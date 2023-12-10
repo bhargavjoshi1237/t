@@ -56,7 +56,38 @@ res.json("hello")
 console.log(process.env.PSU)
 });
 
+app.get('/upt/:username/:notes/:temp/:cloudval/:windval/:selectedTab/:extra', async (req, res) => {
+  const name = req.params.username;  
+  const notes = req.params.notes;
+  const temp = req.params.temp;
+  const windval = req.params.windval;
+  const cloudval = req.params.cloudval;
+  const selectedTab = req.params.selectedTab;
+  const extra = req.params.extra;
 
+  // Format the current date and time to match MySQL datetime format
+  const currentDate = new Date();
+  const formattedDate = currentDate.toISOString().slice(0, 19).replace('T', ' ');
+
+  let connection;
+
+  try {
+    connection = await mysql.createConnection(dbConfig);
+    const [rows, fields] = await connection.execute(
+      `INSERT INTO ticket_data (datetime, imgsrc, locname, info, username, temp, cloud, wind, status, locationid, extra) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [formattedDate, 'https://jfqepsctuctrnuwwfuqr.supabase.co/storage/v1/object/public/pfp/def', 'Vadodara', notes, name, temp, cloudval, windval, 'cloud-wind-moon', 1, extra]
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error('Error inserting data into the database:', error);
+    res.status(500).send('Internal Server Error');
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
+  }
+});
 
 app.get('/create/:username/', async (req, res) => {
   const name = req.params.username;  
