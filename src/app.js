@@ -11,6 +11,25 @@ require('dotenv').config()
 //   connectionString: 'psql "postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require"',
 // });
 
+
+
+const fetchData = async () => {
+  try {
+    const response = await fetch('http://oga.onrender.com');
+    const data = await response.json();
+    console.log('Fetch successful:', data);
+  } catch (error) {
+    console.error('Error fetching data:', error.message);
+  }
+};
+
+
+const fetchInterval = setInterval(fetchData, 120000);
+process.on('SIGINT', () => {
+  clearInterval(fetchInterval);
+  process.exit();
+});
+
 const u = "t55wvpd448a02eaj6g4mwwwww";
 const p = "pscale_pw_iDoCX0uoWoxfVY5lFmlmZSvd3HNqeSurqB6n85GF08wwwwww";
 console.log(u.slice(0, -3))
