@@ -177,14 +177,27 @@ app.get('/set/user/:username/', async (req, res) => {
 
 
 app.get('/set/notification/:username/', async (req, res) => {
-  const name = req.params.username;  
-  const db = pgp('postgresql://bhargavjoshi1237:JtqLix7po8Ws@ep-weathered-frog-53534052.ap-southeast-1.aws.neon.tech/data?sslmode=require')
-  db.one(`UPDATE users  SET notifications = CASE      WHEN notifications = true THEN false      ELSE true  END  WHERE username = '${name}' RETURNING *;`)
-  .then((data) => {  
-    let op = JSON.parse(JSON.stringify(data))
-    res.json(op)
-  })
-  .catch((error) => {console.log('ERROR:', error) })
+  try {
+    const name = req.params.username;
+    
+    // Use parameterized query to prevent SQL injection
+    const data = await db.one(`
+      UPDATE users
+      SET notifications = CASE
+        WHEN notifications = true THEN false
+        ELSE true
+      END
+      WHERE username = $1
+      RETURNING *;
+    `, [name]);
+
+    // Send the updated data as a response
+    res.json(data);
+  } catch (error) {
+    // Handle errors and send an appropriate response to the client
+    console.error('ERROR:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 app.get('/set/unit/:username/', async (req, res) => {
