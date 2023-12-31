@@ -24,11 +24,7 @@ const fetchData = async () => {
 };
 
 
-const fetchInterval = setInterval(fetchData, 120000);
-process.on('SIGINT', () => {
-  clearInterval(fetchInterval);
-  process.exit();
-});
+
 
 const u = "t55wvpd448a02eaj6g4mwwwww";
 const p = "pscale_pw_iDoCX0uoWoxfVY5lFmlmZSvd3HNqeSurqB6n85GF08wwwwww";
