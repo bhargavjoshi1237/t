@@ -25,8 +25,8 @@ const fetchData = async () => {
 
 
 
-const u = "t55wvpd448a02eaj6g4mwwwww";
-const p = "pscale_pw_iDoCX0uoWoxfVY5lFmlmZSvd3HNqeSurqB6n85GF08wwwwww";
+const u = "efy3xddy7nombc38gfd8mwwwww";
+const p = "pscale_pw_cxuv59p1vxWHpJk70lQk9Ej0sSpN06rbjxTFK3NdF3Awwwwww";
 console.log(u.slice(0, -3))
 const dbConfig = {
   host: 'aws.connect.psdb.cloud',
@@ -73,7 +73,7 @@ res.json("hello")
 console.log(process.env.PSU)
 });
 
-app.get('/upt/:username/:notes/:temp/:cloudval/:windval/:selectedTab/:extra', async (req, res) => {
+app.get('/upt', async (req, res) => {
   const name = req.params.username;  
   const notes = req.params.notes;
   const temp = req.params.temp;
@@ -91,8 +91,7 @@ app.get('/upt/:username/:notes/:temp/:cloudval/:windval/:selectedTab/:extra', as
   try {
     connection = await mysql.createConnection(dbConfig);
     const [rows, fields] = await connection.execute(
-      `INSERT INTO ticket_data (datetime, imgsrc, locname, info, username, temp, cloud, wind, status, locationid, extra) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      [formattedDate, 'https://jfqepsctuctrnuwwfuqr.supabase.co/storage/v1/object/public/pfp/def', 'Vadodara', notes, name, temp, cloudval, windval, 'cloud-wind-moon', 1, extra]
+      `select anime_id from anime_raws;`
     );
 
     res.json(rows);
