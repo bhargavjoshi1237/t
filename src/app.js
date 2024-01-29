@@ -33,7 +33,29 @@ app.use((req, res, next) => {
   next();
 });
 
+// Updated CORS middleware
+app.use((req, res, next) => {
+  const allowedOrigins = [
+    'https://wss-hqv8eibx9-bhargavjoshi1237.vercel.app',
+    'http://localhost:3000',
+    'https://animealley.vercel.app'
+    // Add more origins as needed
+  ];
 
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+
+  next();
+});
+
+app.use(compression());
 app.get('/', async (req, res) => {
   res.json("hello")
   console.log(process.env.PSU)
