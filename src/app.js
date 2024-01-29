@@ -35,7 +35,7 @@ app.use((req, res, next) => {
 
 
 
-app.get('/:username',  async (req, res) => {
+app.get('/f/:username',  async (req, res) => {
   const name = req.params.username; 
   try {
     // Capture the start time
