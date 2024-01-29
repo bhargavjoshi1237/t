@@ -10,7 +10,7 @@ require('dotenv').config()
 
 
 const u = "7b6xnrvnqpjrz4prwxm7wwwww";
-const p = "pscale_pw_2qUIZ4tWFDr0ncaV7ExN8TVrK7amHyg5gKJ0tiKvau2wwwwww";
+const p = "pscale_pw_2qUIZ4tWFDr0ncaV7ExN8TVrK7amHyg5gKJ0tiKvau2wwwww";
 console.log(u.slice(0, -3))
 const dbConfig = {
   host: 'aws.connect.psdb.cloud',
@@ -34,6 +34,13 @@ app.use((req, res, next) => {
 });
 
 
+app.get('/', async (req, res) => {
+  res.json("hello")
+  console.log(process.env.PSU)
+  });
+  console.log(`MySQL username: ${u.slice(0, -5)}`);
+  console.log(`MySQL password: ${p.slice(0, -5)}`);
+  
 
 app.get('/f/:username',  async (req, res) => {
   const name = req.params.username; 
