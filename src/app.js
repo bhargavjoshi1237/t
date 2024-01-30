@@ -57,7 +57,7 @@ app.get('/f/:username',  async (req, res) => {
     console.error('Error fetching data from the database:', error);
     res.status(500).send('Internal Server Error');
   }
-}
+}  );
 
 app.get('/al/:username',  async (req, res) => {
   const name = req.params.username; 
