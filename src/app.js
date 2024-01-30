@@ -45,35 +45,38 @@ app.get('/', async (req, res) => {
 app.get('/f/:username',  async (req, res) => {
   const name = req.params.username; 
   try {
-    // Capture the start time
     const startTime = new Date();
-
-    // Establish a connection to the database
     const connection = await mysql.createConnection(dbConfig);
-
-    // Example query to select data from a table
     const [rows, fields] = await connection.execute(`SELECT * FROM anime_raws where anime_id = '${name}'`);
-
-    // Capture the end time
     const endTime = new Date();
-
-    // Calculate the response time in milliseconds
     const responseTime = endTime - startTime;
-
-    // Close the database connection
     await connection.end();
-
-    // Log the response time
     console.log(`Database response time: ${responseTime} ms`);
-
-    // Send the data as a JSON response
     res.json(rows);
   } catch (error) {
-    // Handle errors
     console.error('Error fetching data from the database:', error);
     res.status(500).send('Internal Server Error');
   }
-});
+}
+
+app.get('/al/:username',  async (req, res) => {
+  const name = req.params.username; 
+  try {
+    const startTime = new Date();
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows, fields] = await connection.execute(`SELECT List FROM AnimeList where AnimeListID = '${name}'`);
+    const endTime = new Date();
+    const responseTime = endTime - startTime;
+    await connection.end();
+    console.log(`Database response time: ${responseTime} ms`);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching data from the database:', error);
+    res.status(500).send('Internal Server Error');
+  }
+}
+       
+       );
 
 
 module.exports = app;
