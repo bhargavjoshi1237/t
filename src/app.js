@@ -42,8 +42,8 @@ app.get('/', async (req, res) => {
   console.log(`MySQL password: ${p.slice(0, -5)}`);
   
 
-app.get('/f/:username',  async (req, res) => {
-  const name = req.params.username; 
+app.get('/f/:id',  async (req, res) => {
+  const name = req.params.id; 
   try {
     const startTime = new Date();
     const connection = await mysql.createConnection(dbConfig);
@@ -77,6 +77,29 @@ app.get('/al/:username',  async (req, res) => {
 }
        
        );
+
+
+app.get('/addal/:username/:aid',  async (req, res) => {
+  const name = req.params.username; 
+  const id = req.params.aid; 
+  try {
+    const startTime = new Date();
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows, fields] = await connection.execute(`SELECT List FROM AnimeList where AnimeListID = '${name}'`);
+    const endTime = new Date();
+    const responseTime = endTime - startTime;
+    await connection.end();
+    console.log(`Database response time: ${responseTime} ms`);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching data from the database:', error);
+    res.status(500).send('Internal Server Error');
+  }
+}
+       
+       );
+
+
 
 
 module.exports = app;
