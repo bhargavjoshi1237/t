@@ -120,7 +120,7 @@ const scrapeAndStoreData = async () => {
 scrapeAndStoreData();
 
 // Set up a scheduler to execute the function every 10 minutes
-const intervalId = setInterval(scrapeAndStoreData, 1 * 60 * 1000);
+const intervalId = setInterval(scrapeAndStoreData, 43200000);
 
 // Handle process termination to clear the interval
 process.on('SIGINT', () => {
