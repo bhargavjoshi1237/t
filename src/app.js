@@ -1,9 +1,10 @@
 const express = require('express');
 const app = express();
 const Redis = require("ioredis");
-
+const { Client } = require("pg");
 const { scrapeHtmlWeb } = require("scrape-html-web");
 const client = new Redis("redis://default:553e61e7c64649478d1ff784688c052b@correct-stud-36874.upstash.io:36874");
+const clientx = new Client("postgresql://jack:jy0LTlC8AlTandmUfJEv3A@wss-uesrs-3515.7s5.aws-ap-south-1.cockroachlabs.cloud:26257/defaultdb?sslmode=verify-full");
 
 
 
@@ -55,7 +56,13 @@ app.get('/:id', async (req, res) => {
     console.error('Error fetching username from Redis:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
+
+ 
+
+
 });
+
+
 
 
 
