@@ -58,7 +58,33 @@ app.get('/:id', async (req, res) => {
   }
 
  
-
+  (async () => {
+    try {
+      // Connect to the database
+      await clientx.connect();
+  
+      // Record the start time
+      const startx = Date.now();
+  
+      // Execute the query
+      const results = await clientx.query("SELECT * FROM users;");
+      console.log(results.rows);
+  
+      // Record the end time
+      const endx = Date.now();
+  
+      // Calculate response time
+      const responseTimex = endx - startx;
+      console.log(`Response time: ${responseTimex} ms`);
+  
+      // Close the database connection
+      await clientx.end();
+    } catch (err) {
+      // Handle errors
+      console.error("Error executing query:", err);
+    }
+  })();
+  
 
 });
 
