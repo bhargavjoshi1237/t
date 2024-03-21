@@ -39,94 +39,24 @@ app.use((req, res, next) => {
 //   console.log(process.env.PSU)
 //   });
 
-  
-app.get('/', async (req, res) => {
+app.get('/:id', async (req, res) => {
+  const { id } = req.params;
+  const start = Date.now(); // Record the start time
+
   try {
-    // Record the start time
-    const startTime = new Date();
+    // Fetch the username associated with the token from Redis
+    const username = await client.get(id);
+    res.json(JSON.parse(username));
 
-    const options = {
-      url: "https://myanimelist.net/news",
-      list: true,
-      bypassCors: true,
-      mainSelector: ".news-list ",
-      childrenSelector: [
-        { key: "tags", selector: ".tags ", type: "text" },
-        { key: "title", selector: ".title", type: "text" },
-        { key: "writer", selector: ".info  ", type: "text" }, 
-        { key: "description", selector: ".text ", type: "text" },
-        { key: "imagex", selector: ".image ", attr: "src" },
-       
-
-        // { key: "image", selector: ".clearfix", type: "text" },
-
-       ],
-    };
-
-    // Perform the scraping operation
-    const data = await scrapeHtmlWeb(options);
-    console.log(data)
-    res.json(data.slice(0,20))
-    // Calculate the time taken
-    const endTime = new Date();
-    const elapsedTime = endTime - startTime; // Time difference in milliseconds
-
-    console.log('Time taken to fetch scrape data:', elapsedTime, 'ms');
-    await client.set('myanimelist_news', JSON.stringify(data.slice(0,20)));
-    // Send the data as response
-    
-
+    const end = Date.now(); // Record the end time
+    const responseTime = end - start; // Calculate response time
+    console.log(`Response time: ${responseTime} ms`);
   } catch (error) {
-    console.error('Error fetching data:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error fetching username from Redis:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
-const scrapeAndStoreData = async () => {
- 
-  try {
-    const startTime = new Date();
 
-    const options = {
-      url: "https://myanimelist.net/news",
-      list: true,
-      bypassCors: true,
-      mainSelector: ".news-list ",
-      childrenSelector: [
-        { key: "tags", selector: ".tags ", type: "text" },
-        { key: "title", selector: ".title", type: "text" },
-        { key: "writer", selector: ".info  ", type: "text" }, 
-        { key: "description", selector: ".text ", type: "text" },
-        { key: "imagex", selector: ".image ", attr: "src" },
-      ],
-    };
-
-    // Perform the scraping operation
-    const data = await scrapeHtmlWeb(options);
-    
-    // Store data in Redis
-    await client.set('myanimelist_news', JSON.stringify(data.slice(0,20)));
-
-    // Calculate the time taken
-    const endTime = new Date();
-    const elapsedTime = endTime - startTime; // Time difference in milliseconds
-
-    console.log('Time taken to fetch scrape data:', elapsedTime, 'ms');
-  } catch (error) {
-    console.error('Error fetching data:', error);
-  }
-};
-
-// Execute the function initially
-scrapeAndStoreData();
-
-// Set up a scheduler to execute the function every 10 minutes
-const intervalId = setInterval(scrapeAndStoreData, 43200000);
-
-// Handle process termination to clear the interval
-process.on('SIGINT', () => {
-  clearInterval(intervalId);
-  console.log('Process terminated. Interval cleared.');
-});
 
 
 
