@@ -19,20 +19,6 @@ app.get('/', async (req, res) => {
   res.json("hello")
   });
 
-app.get('/ping', async (req, res) => {
-  res.json("pong")
-  });
-
-
-
-});
-
-
-
-
-
-
-
 
 
 module.exports = app;
