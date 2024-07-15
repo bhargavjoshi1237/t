@@ -325,7 +325,7 @@ app.get('/name/:name', async (req, res) => {
 });
 
 
-app.get('/wikipidia/:name', async (req, res) => {
+app.get('/wikipedia/:name', async (req, res) => {
   try {
     const { name } = req.params;
     const url = `https://en.wikipedia.org/api/rest_v1/page/segments/${name}`;
@@ -337,30 +337,63 @@ app.get('/wikipidia/:name', async (req, res) => {
     // Load the HTML into Cheerio
     const $ = cheerio.load(segmentedContent);
 
-    // Find the table with class wikitable
-    const mangaTable = $('table.wikitable');
-    if (mangaTable.length === 0) {
-      return res.status(404).json({ error: 'Manga table not found' });
+    // Check for anchor tags with titles "List of chapters" or containing "List of volumes"
+    const chapterLinks = [];
+    const linkFound = $('a[title="List of chapters"], a:contains("List of volumes")').each((index, element) => {
+      const link = $(element).attr('href');
+      chapterLinks.push(link);
+      console.log(`Found link: ${link}`);
+    }).length > 0;
+
+    if (!linkFound) {
+      return res.status(404).json({ error: 'Manga table link not found' });
     }
 
+    // Fetch the content from the found link
+    const linkUrl = `https://en.wikipedia.org/wiki${(chapterLinks[0]).substring(1)}`; // Assuming we only use the first link found
+    console.log(linkUrl)
+    const linkResponse = await axios.get(linkUrl);
+    const linkHtml = linkResponse.data;
+
+    // Load the HTML of the link into Cheerio
+    const link$ = cheerio.load(linkHtml);
+
+    // Find the table with class wikitable in the fetched content
+    const mangaTable = link$('table.wikitable');
+    if (mangaTable.length === 0) {
+      return res.status(404).json({ error: 'Manga table not found in fetched link [TABLE 404]' });
+    }
+    
     // Check if the table has headers for English release date and English ISBN
     const headers = mangaTable.find('th');
     const englishReleaseDateIndex = headers.toArray().findIndex(header => $(header).text().trim().toLowerCase() === 'english release date');
     const englishISBNIndex = headers.toArray().findIndex(header => $(header).text().trim().toLowerCase() === 'english isbn');
 
-    if (englishReleaseDateIndex === -1 || englishISBNIndex === -1) {
-      return res.status(404).json({ error: 'English release date or English ISBN not found in table' });
-    }
-
-    // Extract the release dates and ISBNs from the table
+    // Extract data from the manga table
     const mangaData = [];
     mangaTable.find('tbody > tr').each((index, row) => {
       if (index === 0) return; // Skip the header row
 
       const volumeNumber = $(row).find('th').text().trim();
-      const englishReleaseDate = $(row).find('td').eq(englishReleaseDateIndex - 1).contents().filter((_, el) => el.type === 'text').text().trim();
-      const englishISBN = $(row).find('td').eq(englishISBNIndex - 1).text().trim().replace(/-/g, '');
-      
+      let englishReleaseDate = '';
+      let englishISBN = '';
+
+      // Try to find English release date and ISBN in expected columns
+      if (englishReleaseDateIndex !== -1) {
+        englishReleaseDate = $(row).find('td').eq(englishReleaseDateIndex - 1).contents().filter((_, el) => el.type === 'text').text().trim();
+      }
+
+      if (englishISBNIndex !== -1) {
+        englishISBN = $(row).find('td').eq(englishISBNIndex - 1).text().trim().replace(/-/g, '');
+      }
+
+      // If ISBN is still empty, try to find it in the last td of the row
+      if (!englishISBN) {
+        const tdElements = $(row).find('td');
+        const lastTd = tdElements.last(); // Select the last td in the row
+        englishISBN = lastTd.find('a[href^="/wiki/Special:BookSources/"]').last().text().trim().replace(/-/g, '');
+      }
+
       // Push the extracted data into the mangaData array if both values are present
       if (englishReleaseDate && englishISBN) {
         mangaData.push({
@@ -369,15 +402,18 @@ app.get('/wikipidia/:name', async (req, res) => {
           englishISBN
         });
       }
-      
     });
 
-    res.json(mangaData);
+    res.json({
+      mangaData,
+      chapterLinks
+    });
   } catch (error) {
     console.error('Error fetching Wikipedia page:', error);
     res.status(500).json({ error: 'Failed to fetch Wikipedia page' });
   }
 });
+
 
 
 const fetchMangaDexData = async (title) => {
