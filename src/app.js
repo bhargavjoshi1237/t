@@ -3,7 +3,8 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const wiki = require('wikipedia');
-
+const NodeCache = require('node-cache');
+const cache = new NodeCache({ stdTTL: 20 }); // TTL is 10 seconds
 const app = express();
 
 app.use((req, res, next) => {
@@ -386,63 +387,67 @@ const fetchMangaDexData = async (title) => {
   return null;
 };
 
-const fetchComics = async (comicsArray, limit = 5, requireMalLink = true) => {
+async function fetchComics(comics) {
   const results = [];
   let attempts = 0;
-  const maxAttempts = comicsArray.length;
 
-  for (const comic of comicsArray) {
-    if (results.length >= limit || attempts >= maxAttempts) break;
+  for (const comic of comics) {
+    if (results.length >= 5 || attempts >= comics.length) break;
     const title = comic.title;
-    const mangaData = await fetchMangaDexData(title);
-    if (mangaData && (mangaData.malLink || !requireMalLink)) {
-      results.push(mangaData);
+
+    // Fetch data from MangaDex API for the title
+    const mangadexResponse = await fetch(`https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&includes[]=cover_art&limit=1`);
+    const mangadexData = await mangadexResponse.json();
+    const manga = mangadexData.data[0];
+
+    // Check for manga data and MAL link
+    if (manga && manga.attributes.links.mal) {
+      const id = manga.id;
+      const malLink = manga.attributes.links.mal;
+      const coverArt = manga.relationships.find(rel => rel.type === 'cover_art');
+
+      results.push({
+        title,
+        id,
+        malLink,
+        coverArt: coverArt ? {
+          volume: coverArt.attributes.volume,
+          fileName: `https://uploads.mangadex.org/covers/${id}/${coverArt.attributes.fileName}`
+        } : null
+      });
     }
     attempts++;
   }
 
   return results;
-};
+}
 
 app.get('/homepage', async (req, res) => {
+  const cachedData = cache.get('homepage');
+  if (cachedData) {
+    return res.json(cachedData);
+  }
+
   try {
     const comickResponse = await fetch('https://api.comick.io/top?accept_mature_content=true');
     const comickData = await comickResponse.json();
 
-    const topFollowComics7 = await fetchComics(comickData.topFollowComics['7'], 5);
-    const topFollowComics30 = await fetchComics(comickData.topFollowComics['30'], 5);
-    const topFollowComics90 = await fetchComics(comickData.topFollowComics['90'], 5);
+    const recentRankResults = await fetchComics(comickData.recentRank);
+    const topFollowComicsResults7 = await fetchComics(comickData.topFollowComics['7']);
+    const topFollowComicsResults30 = await fetchComics(comickData.topFollowComics['30']);
+    const topFollowComicsResults90 = await fetchComics(comickData.topFollowComics['90']);
 
-    const topFollowNewComics7 = await fetchComics(comickData.topFollowNewComics['7'], 5);
-    const topFollowNewComics30 = await fetchComics(comickData.topFollowNewComics['30'], 5);
-    const topFollowNewComics90 = await fetchComics(comickData.topFollowNewComics['90'], 5);
-
-    const trending7 = await fetchComics(comickData.trending['7'], 5);
-    const trending30 = await fetchComics(comickData.trending['30'], 5);
-    const trending90 = await fetchComics(comickData.trending['90'], 5);
-
-    const recentRank = await fetchComics(comickData.recentRank, 5, false); // Allow results without MAL links
-    const topRank = await fetchComics(comickData.rank, 5);
-
-    res.json({
+    const result = {
+      recentRank: recentRankResults,
       topFollowComics: {
-        '7': topFollowComics7,
-        '30': topFollowComics30,
-        '90': topFollowComics90
-      },
-      topFollowNewComics: {
-        '7': topFollowNewComics7,
-        '30': topFollowNewComics30,
-        '90': topFollowNewComics90
-      },
-      trending: {
-        '7': trending7,
-        '30': trending30,
-        '90': trending90
-      },
-      recentRank,
-      topRank
-    });
+        '7': topFollowComicsResults7,
+        '30': topFollowComicsResults30,
+        '90': topFollowComicsResults90
+      }
+    };
+
+    cache.set('homepage', result);
+    res.json(result);
   } catch (error) {
     console.error('Error fetching data:', error);
     res.status(500).json({ error: 'Failed to fetch data' });

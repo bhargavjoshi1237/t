@@ -29,6 +29,7 @@
     "morgan": "^1.10.0",
     "mysql2": "^3.6.5",
     "mysql2-promise": "^0.1.4",
+    "node-cache": "^5.1.2",
     "node-fetch": "^3.3.2",
     "pg": "^8.11.3",
     "pg-promise": "^11.5.4",
