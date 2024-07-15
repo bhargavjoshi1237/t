@@ -17,6 +17,19 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/updatecashtime/:time', (req, res) => {
+  const newCacheTime = parseInt(req.params.time, 10);
+
+  if (isNaN(newCacheTime) || newCacheTime <= 0) {
+    return res.status(400).json({ error: 'Invalid cache time provided' });
+  }
+
+  cache.options.stdTTL = newCacheTime;
+  res.json({ message: `Cache time updated to ${newCacheTime} seconds` });
+});
+
+
+
 app.get('/', async (req, res) => {
   res.json("Hello, this is the root endpoint.");
 });
