@@ -32,10 +32,12 @@
     "node-fetch": "^3.3.2",
     "pg": "^8.11.3",
     "pg-promise": "^11.5.4",
+    "puppeteer": "^22.13.0",
     "redis": "^4.6.13",
     "requests": "^0.3.0",
     "scrape-html-web": "^0.1.2",
     "vercel": "^33.6.1",
+    "wikipedia": "^2.1.2",
     "x-ray": "^2.3.4"
   },
   "devDependencies": {
