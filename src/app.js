@@ -337,6 +337,13 @@ app.get('/wikipedia/:name', async (req, res) => {
     // Load the HTML into Cheerio
     const $ = cheerio.load(segmentedContent);
 
+    // Convert mw-panel-toc-list <ul> content to JSON
+    let tocList = [];
+    const tocElement = $('#mw-panel-toc-list');
+    if (tocElement.length > 0) {
+      tocList = tocElement.find('li').map((index, li) => $(li).text().trim()).get();
+    }
+
     // Check for anchor tags with titles "List of chapters" or containing "List of volumes"
     const chapterLinks = [];
     const linkFound = $('a[title="List of chapters"], a:contains("List of volumes")').each((index, element) => {
@@ -385,6 +392,15 @@ app.get('/wikipedia/:name', async (req, res) => {
 
       if (englishISBNIndex !== -1) {
         englishISBN = $(row).find('td').eq(englishISBNIndex - 1).text().trim().replace(/-/g, '');
+
+        // Check if ISBN is in a combined format and extract digital ISBN
+        const isbnParts = englishISBN.split(' ');
+        for (const part of isbnParts) {
+          if (part.match(/^\d{13}$/)) { // Check if part matches 13-digit ISBN format
+            englishISBN = part;
+            break;
+          }
+        }
       }
 
       // If ISBN is still empty, try to find it in the last td of the row
@@ -405,8 +421,9 @@ app.get('/wikipedia/:name', async (req, res) => {
     });
 
     res.json({
+      tocList,
       mangaData,
-      chapterLinks
+      
     });
   } catch (error) {
     console.error('Error fetching Wikipedia page:', error);
