@@ -2,9 +2,11 @@ const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
+const wtf = require('wtf_wikipedia');
 const wiki = require('wikipedia');
 const NodeCache = require( "node-cache" );
 const cache = new NodeCache({ stdTTL: 86400 }); // TTL is 10 seconds
+const moment = require('moment');
 
 const app = express();
 
@@ -541,6 +543,180 @@ app.get('/homepage', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch data' });
   }
 });
+
+async function fetchMangaDetailsFromUrl(url) {
+  try {
+    const opts = { 'Api-User-Agent': 'wtf_wikipedia example' };
+    const doc = await wtf.fetch(url, opts);
+    const docJson = doc.json();
+
+    const sections = docJson.sections || [];
+    let result = {
+      sectionTitle: '',
+      bookDetails: []
+    };
+    let sectionFound = false;
+
+    for (let section of sections) {
+      const templates = section.templates || [];
+      for (let template of templates) {
+        const volumeNumber = template.volumenumber || template['volume number'] || '';
+        const originalRelDateRaw = template.originalreldate || template['original rel. date'] || '';
+        const originalRelDate = extractPhysicalDate(originalRelDateRaw);
+
+        // Only consider entries with volume number
+        if (volumeNumber) {
+          result.sectionTitle = section.title;
+          result.bookDetails.push({
+            volumeNumber,
+            originalRelDate,
+            originalISBN: template.originalisbn || '',
+            licensedRelDate: extractPhysicalDate(template.licensedreldate || template['licensed rel. date'] || ''),
+            licensedISBN: template.licensedisbn || '',
+            template: template.template
+          });
+        }
+      }
+      if (result.bookDetails.length > 0) {
+        sectionFound = true;
+        break;
+      }
+    }
+
+    return sectionFound ? result : null;
+  } catch (error) {
+    console.error('Error fetching manga details from Wikipedia:', error);
+    throw error;
+  }
+}
+
+function formatDateFromJikan(day, month, year) {
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  return `${months[month - 1]} ${day}, ${year}`;
+}
+
+// Function to extract physical date if digital and physical dates are present
+function extractPhysicalDate(dateString) {
+  const physicalDateMatch = dateString.match(/\n(.+? \(Physical\))/);
+  if (physicalDateMatch) {
+    return physicalDateMatch[1].replace(' (Physical)', '');
+  }
+  return dateString;
+}
+
+// Function to calculate the difference in months between two dates
+function getMonthDifference(date1, date2) {
+  const m1 = moment(date1, 'MMMM DD, YYYY');
+  const m2 = moment(date2, 'MMMM DD, YYYY');
+  return Math.abs(m1.diff(m2, 'months'));
+}
+
+app.get('/table/:malId', async (req, res) => {
+  try {
+    const { malId } = req.params;
+
+    // Fetch data from Jikan API
+    const jikanResponse = await axios.get(`https://api.jikan.moe/v4/manga/${malId}/full`);
+    const externalLinks = jikanResponse.data.data.external || [];
+    const wikipediaLink = externalLinks.find(link => link.name === 'Wikipedia');
+
+    if (!wikipediaLink) {
+      return res.status(404).json({ error: 'Wikipedia link not found in Jikan API response' });
+    }
+
+    // Fetch the Wikipedia page using wtf_wikipedia
+    const wikipediaUrl = wikipediaLink.url;
+    const wikipediaTitle = wikipediaUrl.split('/').pop();
+    const opts = { 'Api-User-Agent': 'wtf_wikipedia example' };
+    const doc = await wtf.fetch(wikipediaTitle, opts);
+    const docJson = doc.json();
+
+    // Extract the publishing date from Jikan response
+    const { day, month, year } = jikanResponse.data.data.published.prop.from;
+    const publishingDateYear = year;
+
+    // Find book data in Wikipedia sections
+    const sections = docJson.sections || [];
+    let result = {
+      sectionTitle: '',
+      bookDetails: []
+    };
+    let sectionFound = false;
+
+    for (let section of sections) {
+      const templates = section.templates || [];
+      for (let template of templates) {
+        const volumeNumber = template.volumenumber || template['volume number'] || '';
+        const originalRelDateRaw = template.originalreldate || template['original rel. date'] || '';
+        const originalRelDate = extractPhysicalDate(originalRelDateRaw);
+
+        // Extract year from Wikipedia date
+        const originalRelDateYear = new Date(originalRelDate).getFullYear();
+
+        if (volumeNumber === '1' && originalRelDateYear === publishingDateYear) {
+          sectionFound = true;
+          result.sectionTitle = section.title;
+          templates.forEach(tpl => {
+            const volNum = tpl.volumenumber || tpl['volume number'] || '';
+            if (volNum) {
+              result.bookDetails.push({
+                volumeNumber: volNum,
+                originalRelDate: tpl.originalreldate || tpl['original rel. date'] || '',
+                originalISBN: tpl.originalisbn || '',
+                licensedRelDate: extractPhysicalDate(tpl.licensedreldate || tpl['licensed rel. date'] || ''),
+                licensedISBN: tpl.licensedisbn || '',
+                template: tpl.template
+              });
+            }
+          });
+          break;
+        }
+      }
+      if (sectionFound) break;
+    }
+
+    if (!sectionFound) {
+      // Look for a section with name matching Jikan type
+      const type = jikanResponse.data.data.type;
+      const matchingSection = sections.find(section => section.title && section.title.includes(type));
+
+      if (matchingSection) {
+        const firstTemplateList = matchingSection.templates?.[0]?.list;
+        if (firstTemplateList && firstTemplateList.length > 0) {
+          const firstTemplateTitle = firstTemplateList[0];
+
+          // Fetch the Wikipedia page HTML
+          const wikiHtmlResponse = await axios.get(wikipediaUrl);
+          const $ = cheerio.load(wikiHtmlResponse.data);
+
+          // Find the external link with the title
+          const externalLink = $(`a[title="${firstTemplateTitle}"]`).attr('href').replace("/wiki/","");
+          if (externalLink) {
+            const mangaDetails = await fetchMangaDetailsFromUrl(externalLink);
+
+          if (mangaDetails) {
+            return res.json(mangaDetails);
+          }
+          }
+        }
+      }
+
+      return res.status(404).json({ error: 'No matching section or external link found' });
+    }
+
+    // Send the response
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
+
+
 
 
 module.exports = app;
