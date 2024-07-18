@@ -286,7 +286,7 @@ app.get('/crossword/:isbn', async (req, res) => {
 
 
 
-app.get('/abe/:name', async (req, res) => {
+app.get('/name/:name', async (req, res) => {
   try {
     const { name } = req.params;
     const url = `https://www.abebooks.com/servlet/HighlightInventory?ds=30&kn=${name}`;
@@ -326,6 +326,115 @@ app.get('/abe/:name', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch AbeBooks data' });
   }
 });
+
+
+app.get('/wikipedia/:name', async (req, res) => {
+  try {
+    const { name } = req.params;
+    const url = `https://en.wikipedia.org/api/rest_v1/page/segments/${name}`;
+
+    // Fetch data from Wikipedia API
+    const response = await axios.get(url);
+    const { segmentedContent } = response.data;
+
+    // Load the HTML into Cheerio
+    const $ = cheerio.load(segmentedContent);
+
+    // Convert mw-panel-toc-list <ul> content to JSON
+    let tocList = [];
+    const tocElement = $('#mw-panel-toc-list');
+    if (tocElement.length > 0) {
+      tocList = tocElement.find('li').map((index, li) => $(li).text().trim()).get();
+    }
+
+    // Check for anchor tags with titles "List of chapters" or containing "List of volumes"
+    const chapterLinks = [];
+    const linkFound = $('a[title="List of chapters"], a:contains("List of volumes")').each((index, element) => {
+      const link = $(element).attr('href');
+      chapterLinks.push(link);
+      console.log(`Found link: ${link}`);
+    }).length > 0;
+
+    if (!linkFound) {
+      return res.status(404).json({ error: 'Manga table link not found' });
+    }
+
+    // Fetch the content from the found link
+    const linkUrl = `https://en.wikipedia.org/wiki${(chapterLinks[0]).substring(1)}`; // Assuming we only use the first link found
+    console.log(linkUrl)
+    const linkResponse = await axios.get(linkUrl);
+    const linkHtml = linkResponse.data;
+
+    // Load the HTML of the link into Cheerio
+    const link$ = cheerio.load(linkHtml);
+
+    // Find the table with class wikitable in the fetched content
+    const mangaTable = link$('table.wikitable');
+    if (mangaTable.length === 0) {
+      return res.status(404).json({ error: 'Manga table not found in fetched link [TABLE 404]' });
+    }
+    
+    // Check if the table has headers for English release date and English ISBN
+    const headers = mangaTable.find('th');
+    const englishReleaseDateIndex = headers.toArray().findIndex(header => $(header).text().trim().toLowerCase() === 'english release date');
+    const englishISBNIndex = headers.toArray().findIndex(header => $(header).text().trim().toLowerCase() === 'english isbn');
+
+    // Extract data from the manga table
+    const mangaData = [];
+    mangaTable.find('tbody > tr').each((index, row) => {
+      if (index === 0) return; // Skip the header row
+
+      const volumeNumber = $(row).find('th').text().trim();
+      let englishReleaseDate = '';
+      let englishISBN = '';
+
+      // Try to find English release date and ISBN in expected columns
+      if (englishReleaseDateIndex !== -1) {
+        englishReleaseDate = $(row).find('td').eq(englishReleaseDateIndex - 1).contents().filter((_, el) => el.type === 'text').text().trim();
+      }
+
+      if (englishISBNIndex !== -1) {
+        englishISBN = $(row).find('td').eq(englishISBNIndex - 1).text().trim().replace(/-/g, '');
+
+        // Check if ISBN is in a combined format and extract digital ISBN
+        const isbnParts = englishISBN.split(' ');
+        for (const part of isbnParts) {
+          if (part.match(/^\d{13}$/)) { // Check if part matches 13-digit ISBN format
+            englishISBN = part;
+            break;
+          }
+        }
+      }
+
+      // If ISBN is still empty, try to find it in the last td of the row
+      if (!englishISBN) {
+        const tdElements = $(row).find('td');
+        const lastTd = tdElements.last(); // Select the last td in the row
+        englishISBN = lastTd.find('a[href^="/wiki/Special:BookSources/"]').last().text().trim().replace(/-/g, '');
+      }
+
+      // Push the extracted data into the mangaData array if both values are present
+      if (englishReleaseDate && englishISBN) {
+        mangaData.push({
+          volume: volumeNumber,
+          englishReleaseDate,
+          englishISBN
+        });
+      }
+    });
+
+    res.json({
+      tocList,
+      mangaData,
+      
+    });
+  } catch (error) {
+    console.error('Error fetching Wikipedia page:', error);
+    res.status(500).json({ error: 'Failed to fetch Wikipedia page' });
+  }
+});
+
+
 
 const fetchMangaDexData = async (title) => {
   const response = await fetch(`https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&includes[]=cover_art&limit=1`);
@@ -475,6 +584,54 @@ app.get('/bw/:name', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch Bookswagon page' });
   }
 });
+
+app.get('/bwmal/:malId', async (req, res) => {
+  try {
+    const { malId } = req.params;
+
+    // Fetch data from Jikan API
+    const jikanResponse = await axios.get(`https://api.jikan.moe/v4/manga/${malId}`);
+    const { title, type } = jikanResponse.data.data;
+
+    // Construct search query
+    const searchQuery = `${title} (${type})`;
+    const url = `https://www.bookswagon.com/search-books/${encodeURIComponent(searchQuery)}`;
+
+    // Fetch the page from Bookswagon
+    const response = await axios.get(url);
+    const html = response.data;
+    const $ = cheerio.load(html);
+
+    const books = [];
+
+    $('.list-view-books').each((index, element) => {
+      const book = {};
+      book.serialNo = $(element).find('.serialno').text().trim();
+      book.cover = $(element).find('.cover img').attr('src');
+      book.title = $(element).find('.title a').text().trim();
+      book.link = $(element).find('.title a').attr('href');
+      book.author = $(element).find('.author-publisher a').first().text().trim();
+      book.publisher = $(element).find('.author-publisher a').last().text().trim();
+      book.rating = $(element).find('.avergageratingslider').val();
+      book.priceList = $(element).find('.price .list').text().trim();
+      book.priceSell = $(element).find('.price .sell').text().trim();
+      book.binding = $(element).find('.attributes-head:contains("Binding:")').next().text().trim();
+      book.releaseDate = $(element).find('.attributes-head:contains("Release:")').next().text().trim();
+      book.language = $(element).find('.attributes-head:contains("Language:")').next().text().trim();
+      book.stockInfo = $(element).find('.available-stock').text().trim();
+      book.shippingInfo = $(element).find('.shipping-info').text().trim();
+
+      books.push(book);
+    });
+
+    res.json({searchQuery,books});
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
+
+
 
 
 
