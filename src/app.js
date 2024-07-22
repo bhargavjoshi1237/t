@@ -1,5 +1,6 @@
 const express = require('express');
-const axios = require('axios');
+const axios = require('axios');  
+const nodemailer = require('nodemailer'); 
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const wtf = require('wtf_wikipedia');
@@ -7,8 +8,18 @@ const wiki = require('wikipedia');
 const NodeCache = require( "node-cache" );
 const cache = new NodeCache({ stdTTL: 86400 }); // TTL is 10 seconds
 const moment = require('moment');
+const { createClient } = require('@supabase/supabase-js');
+const cron = require('node-cron')
+const transporter = nodemailer.createTransport({
+  host: 'smtp.resend.com',
+  port: 465,
+  auth: {
+    user: 'resend',
+    pass: 're_YnujrVoN_C3RfTaVLHeBV1oNDP1ZcZPP2'
+  }
+});
 const bodyParser = require('body-parser');
-
+// Create a single supabase client for interacting with your database
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use((req, res, next) => {
@@ -19,6 +30,10 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Credentials', 'true');
   next();
 });
+
+const supabaseUrl = 'https://imyvybtnpcbilsvgelve.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteXZ5YnRucGNiaWxzdmdlbHZlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyMDY0MjkzNiwiZXhwIjoyMDM2MjE4OTM2fQ.9i8lh1ajWsqeWLF1QtqsrGC-cj2RhETeoGwEl3_RNcA';  // Replace with your Supabase API Key
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 app.get('/updatecashtime/:time', (req, res) => {
   const newCacheTime = parseInt(req.params.time, 10);
@@ -117,7 +132,7 @@ app.get('/bwd/:url', async (req, res) => {
 app.get('/amazon/:isbn', async (req, res) => {
   try {
     const { isbn } = req.params;
-    const url = `https://www.amazon.in/s?k=${isbn}`;
+    const url = `https://www.amazon.in/s?k=${isbn+" Paperback"}`;
 
     // Launch Puppeteer in headless mode
     const browser = await puppeteer.launch({ headless: true });
@@ -389,7 +404,7 @@ app.get('/homepage', async (req, res) => {
     const trending90 = await fetchComics(comickData.trending['90'], 5);
 
     const recentRank = await fetchComics(comickData.recentRank, 5, false); // Allow results without MAL links
-    const topRank = await fetchComics(comickData.rank, 5);
+    const topRank = await fetchComics(comickData.rank, 10);
     cache.set('homepage', ({
       topFollowComics: {
         '7': topFollowComics7,
@@ -534,6 +549,123 @@ app.get('/isbn/:name', async (req, res) => {
   }
 });
 
+async function checkPrices() {
+  try {
+    const { data, error } = await supabase
+      .from('watchlist')
+      .select();
 
+    if (error) {
+      console.error('Error fetching watchlist:', error);
+      return;
+    }
+    const priceChanges = [];
+    for (const item of data) {
+      if (item.platform === 'amazon') {
+        const currentPrice = await amazonfetch(item.isbn);
+        const currentPrices = parseInt(currentPrice.substring(1))
+        const oldPrice = (item.price_when_added);
+        console.log(currentPrices,oldPrice)
+        if (currentPrices < oldPrice ) {
+          console.log("Price Changed REPOT CREATING")
+          const priceChange = {
+            title: item.title,
+            oldPrice: oldPrice,
+            newPrice: currentPrices,
+            isbn: item.isbn,
+            link: item.link,
+            email: item.email,
+          };
+
+          priceChanges.push(priceChange);
+
+          // Send email notification
+          await sendEmailNotification(item.email, 'Price Drop Alert', `The price of ${item.title} has dropped from ₹${oldPrice} to ₹${currentPrice}. Check it out here: ${item.link}`);
+        }
+      }
+    }
+
+    if (priceChanges.length > 0) {
+      // Insert price change report into PriceHistory table
+      const { error: insertError } = await supabase.from('pricehistory').insert([{ report: priceChanges, date:Date() }]);
+      if (insertError) throw insertError;
+
+      console.log('Price change report inserted into PriceHistory table');
+    }
+  } catch (error) {
+    console.error('Error in checkPrices:', error);
+  }
+}
+
+// sendEmailNotification("bhargavjoshi1237@gmail.com")
+async function sendEmailNotification(email,title,price) {
+  const mailOptions = {
+    from: 'onboarding@animealley.online',
+    to: email,
+    subject: `${title} price drop alert!`,
+    text: `The price of ${title} has dropped to ${price}!`,
+    html: `<h3>The price of ${title} has dropped to ${price}!</h3>`
+  };
+
+  try {
+    let info = await transporter.sendMail(mailOptions);
+    console.log('Email sent: %s', info.messageId);
+    console.log(`Email successfully sent to ${email} regarding the price drop of `);
+  } catch (error) {
+    console.error('Error sending email:', error);
+  }
+}
+cron.schedule('0 0 * * *', () => {
+  console.log('Running price check...');
+  checkPrices();
+});
+
+async function amazonfetch(isbn){
+ 
+    const url = `https://www.amazon.in/s?k=${isbn+" Paperback"}`;
+
+    // Launch Puppeteer in headless mode
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+
+    // Set a random user agent
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+
+    // Go to the URL
+    await page.goto(url, { waitUntil: 'networkidle2' });
+
+    // Wait for the page to load
+    await page.waitForFunction(
+      'window.performance.timing.loadEventEnd - window.performance.timing.navigationStart >= 500'
+    );
+  
+    // Get the HTML content
+    const pageSourceHTML = await page.content();
+  
+    // Close the browser
+    await browser.close();
+  
+    // Load the HTML into Cheerio
+    const $ = cheerio.load(pageSourceHTML);
+  
+    // Extract the price elements
+    const prices = [];
+    $('.a-price-whole').each((index, element) => {
+      prices.push("₹"+$(element).text().trim());
+    });
+
+    // Extract the links with target="_blank"
+    const externalLinks = [];
+    $('a[target="_blank"]').each((index, element) => {
+      externalLinks.push("https://www.amazon.in/"+$(element).attr('href'));
+    });
+
+    // Prepare the response
+  
+     const price = prices[0] || 'N/A' 
+      console.log(price)
+      return price
+   
+  }
 
 module.exports = app;
