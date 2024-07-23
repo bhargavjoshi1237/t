@@ -363,23 +363,7 @@ const fetchMangaDexData = async (title) => {
   return null;
 };
 
-const fetchComics = async (comicsArray, limit = 5, requireMalLink = true) => {
-  const results = [];
-  let attempts = 0;
-  const maxAttempts = comicsArray.length;
 
-  for (const comic of comicsArray) {
-    if (results.length >= limit || attempts >= maxAttempts) break;
-    const title = comic.title;
-    const mangaData = await fetchMangaDexData(title);
-    if (mangaData && (mangaData.malLink || !requireMalLink)) {
-      results.push(mangaData);
-    }
-    attempts++;
-  }
-
-  return results;
-};
 
 app.get('/homepage', async (req, res) => {
   const cachedData = cache.get('homepage');
@@ -388,69 +372,58 @@ app.get('/homepage', async (req, res) => {
     return res.json(cachedData);
   }
   try {
-    const comickResponse = await fetch('https://api.comick.io/top?accept_mature_content=true');
-    const comickData = await comickResponse.json();
+   
+    const [highestRated, topUpcoming, topPublishing, trendingThisWeek, anilist] = await Promise.all([
+      axios.get(urls.highestRated),
+      axios.get(urls.topUpcoming),
+      axios.get(urls.topPublishing),
+      axios.get(urls.trendingThisWeek),
+      axios(urls.anilist.url, urls.anilist.options)
+    ]);
 
-    const topFollowComics7 = await fetchComics(comickData.topFollowComics['7'], 5);
-    const topFollowComics30 = await fetchComics(comickData.topFollowComics['30'], 5);
-    const topFollowComics90 = await fetchComics(comickData.topFollowComics['90'], 5);
-
-    const topFollowNewComics7 = await fetchComics(comickData.topFollowNewComics['7'], 5);
-    const topFollowNewComics30 = await fetchComics(comickData.topFollowNewComics['30'], 5);
-    const topFollowNewComics90 = await fetchComics(comickData.topFollowNewComics['90'], 5);
-
-    const trending7 = await fetchComics(comickData.trending['7'], 5);
-    const trending30 = await fetchComics(comickData.trending['30'], 5);
-    const trending90 = await fetchComics(comickData.trending['90'], 5);
-
-    const recentRank = await fetchComics(comickData.recentRank, 5, false); // Allow results without MAL links
-    const topRank = await fetchComics(comickData.rank, 10);
-    cache.set('homepage', ({
-      topFollowComics: {
-        '7': topFollowComics7,
-        '30': topFollowComics30,
-        '90': topFollowComics90
-      },
-      topFollowNewComics: {
-        '7': topFollowNewComics7,
-        '30': topFollowNewComics30,
-        '90': topFollowNewComics90
-      },
-      trending: {
-        '7': trending7,
-        '30': trending30,
-        '90': trending90
-      },
-      recentRank,
-      topRank
-    }));
-    console.log(" DATA CASHED")
-
-    res.json({
-      topFollowComics: {
-        '7': topFollowComics7,
-        '30': topFollowComics30,
-        '90': topFollowComics90
-      },
-      topFollowNewComics: {
-        '7': topFollowNewComics7,
-        '30': topFollowNewComics30,
-        '90': topFollowNewComics90
-      },
-      trending: {
-        '7': trending7,
-        '30': trending30,
-        '90': trending90
-      },
-      recentRank,
-      topRank
-    });
+    const response = {
+      highestRated: highestRated.data,
+      topUpcoming: topUpcoming.data,
+      topPublishing: topPublishing.data,
+      trendingThisWeek: trendingThisWeek.data,
+      anilist: anilist.data
+    };
+    cache.set('homepage', response);
+    console.log("Date Cashed")
+    res.json(response);
   } catch (error) {
     console.error('Error fetching data:', error);
     res.status(500).json({ error: 'Failed to fetch data' });
   }
 });
 
+const urls = {
+  highestRated: 'https://kitsu.io/api/edge/manga?page%5Blimit%5D=10&sort=-average_rating',
+  topUpcoming: 'https://kitsu.io/api/edge/manga?filter%5Bstatus%5D=upcoming&page%5Blimit%5D=10&sort=-user_count',
+  topPublishing: 'https://kitsu.io/api/edge/manga?page%5Blimit%5D=10&sort=-user_count',
+  trendingThisWeek: 'https://kitsu.io/api/edge/trending/manga?limit=10',
+  anilist: {
+    url: 'https://graphql.anilist.co',
+    options: {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      data: JSON.stringify({
+        query: `
+        query($page:Int = 1 $id:Int $type:MediaType $isAdult:Boolean = false $search:String $format:[MediaFormat]$status:MediaStatus $countryOfOrigin:CountryCode $source:MediaSource $season:MediaSeason $seasonYear:Int $year:String $onList:Boolean $yearLesser:FuzzyDateInt $yearGreater:FuzzyDateInt $episodeLesser:Int $episodeGreater:Int $durationLesser:Int $durationGreater:Int $chapterLesser:Int $chapterGreater:Int $volumeLesser:Int $volumeGreater:Int $licensedBy:[Int]$isLicensed:Boolean $genres:[String]$excludedGenres:[String]$tags:[String]$excludedTags:[String]$minimumTagRank:Int $sort:[MediaSort]=[POPULARITY_DESC,SCORE_DESC]){Page(page:$page,perPage:20){pageInfo{total perPage currentPage lastPage hasNextPage}media(id:$id type:$type season:$season format_in:$format status:$status countryOfOrigin:$countryOfOrigin source:$source search:$search onList:$onList seasonYear:$seasonYear startDate_like:$year startDate_lesser:$yearLesser startDate_greater:$yearGreater episodes_lesser:$episodeLesser episodes_greater:$episodeGreater duration_lesser:$durationLesser duration_greater:$durationGreater chapters_lesser:$chapterLesser chapters_greater:$chapterGreater volumes_lesser:$volumeLesser volumes_greater:$volumeGreater licensedById_in:$licensedBy isLicensed:$isLicensed genre_in:$genres genre_not_in:$excludedGenres tag_in:$tags tag_not_in:$excludedTags minimumTagRank:$minimumTagRank sort:$sort isAdult:$isAdult){id title{userPreferred}coverImage{extraLarge large color}startDate{year month day}endDate{year month day}bannerImage season seasonYear description type format status(version:2)episodes duration chapters volumes genres isAdult averageScore popularity nextAiringEpisode{airingAt timeUntilAiring episode}mediaListEntry{id status}studios(isMain:true){edges{isMain node{id name}}}}}}
+        `,
+        variables: {
+          page: 1,
+          type: 'MANGA',
+          sort: ["TRENDING_DESC","POPULARITY_DESC"]
+        }
+        
+      })
+    }
+  }
+};
 
 app.get('/bw/:name', async (req, res) => {
   try {
@@ -615,10 +588,10 @@ async function sendEmailNotification(email,title,price) {
     console.error('Error sending email:', error);
   }
 }
-cron.schedule('0 0 * * *', () => {
-  console.log('Running price check...');
-  checkPrices();
-});
+// cron.schedule('0 0 * * *', () => {
+//   console.log('Running price check...');
+//   checkPrices();
+// });
 
 async function amazonfetch(isbn){
  
@@ -667,5 +640,20 @@ async function amazonfetch(isbn){
       return price
    
   }
+
+
+// GraphQL query
+const query = `query{genres:GenreCollection tags:MediaTagCollection{name description category isAdult}}`;
+
+// GraphQL query variables
+const variables = {
+  search: "Fate/Zero",
+  page: 1,
+  perPage: 3
+};
+
+
+
+
 
 module.exports = app;
