@@ -342,27 +342,6 @@ app.get('/abe/:name', async (req, res) => {
   }
 });
 
-const fetchMangaDexData = async (title) => {
-  const response = await fetch(`https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&includes[]=cover_art&limit=1`);
-  const data = await response.json();
-  const manga = data.data[0];
-  if (manga) {
-    const id = manga.id;
-    const malLink = manga.attributes.links?.mal || null;
-    const coverArt = manga.relationships.find(rel => rel.type === 'cover_art');
-    return {
-      title,
-      id,
-      malLink,
-      coverArt: coverArt ? {
-        volume: coverArt.attributes.volume,
-        fileName: `https://uploads.mangadex.org/covers/${id}/${coverArt.attributes.fileName}`
-      } : null
-    };
-  }
-  return null;
-};
-
 
 
 app.get('/homepage', async (req, res) => {
@@ -396,6 +375,50 @@ app.get('/homepage', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch data' });
   }
 });
+
+app.get('/homepage', async (req, res) => {
+  try {
+    // Fetch data from AniList
+    const anilistResponse = await axios(anilistUrl, anilistOptions);
+    const anilistData = anilistResponse.data.data.Page.media;
+
+    // Fetch data from other sources
+    const [highestRated, topUpcoming, topPublishing, trendingThisWeek] = await Promise.all([
+      axios.get('https://kitsu.io/api/edge/manga?page%5Blimit%5D=5&sort=-average_rating'),
+      axios.get('https://kitsu.io/api/edge/manga?filter%5Bstatus%5D=upcoming&page%5Blimit%5D=5&sort=-user_count'),
+      axios.get('https://kitsu.io/api/edge/manga?page%5Blimit%5D=5&sort=-user_count'),
+      axios.get('https://kitsu.io/api/edge/trending/manga?limit=5')
+    ]);
+
+    // Process AniList data with MangaDex search
+    const combinedResponses = [];
+    for (const media of anilistData) {
+      const mangadexData = await searchMangaDex(media.title.userPreferred);
+      if (mangadexData) {
+        combinedResponses.push({
+          anilist: media,
+          mangadex: mangadexData
+        });
+      }
+    }
+
+    console.log(combinedResponses); // Log the combined responses
+
+    const response = {
+      highestRated: highestRated.data,
+      topUpcoming: topUpcoming.data,
+      topPublishing: topPublishing.data,
+      trendingThisWeek: trendingThisWeek.data,
+      anilist: combinedResponses
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
+
 
 const urls = {
   highestRated: 'https://kitsu.io/api/edge/manga?page%5Blimit%5D=10&sort=-average_rating',
