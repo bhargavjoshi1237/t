@@ -678,70 +678,81 @@ const variables = {
 
 async function fetchComickData(url) {
   try {
-    const response = await axios.get(url);
-    return response.data;
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return data;
   } catch (error) {
     console.error(`Error fetching data from Comick: ${error}`);
     return null;
   }
 }
 
-async function searchMangaDex(title) {
+// Fetch data from MangaDex
+async function fetchMangaDexData(title) {
+  const url = `https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=1`;
+
   try {
-    const response = await axios.get(`https://api.mangadex.org/manga?title=${title}`);
-    return response.data;
+    const response = await fetch(url);
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error(`Error fetching data from MangaDex: ${error}`);
     return null;
   }
 }
 
-async function processComickData() {
-  const comickUrl = 'https://api.comick.io/chapter?accept_erotic_content=true&page=1&device-memory=8&order=hot';
-  const comickData = await fetchComickData(comickUrl);
+async function xxxd(){
+  try {
+    const comickUrl = 'https://api.comick.io/chapter?accept_erotic_content=true&page=1&device-memory=8&order=hot';
+    const comickData = await fetchComickData(comickUrl);
 
-  if (!comickData) return;
+    if (!comickData) {
+      return res.status(500).json({ error: 'Failed to fetch data from Comick' });
+    }
 
-  const entriesWithMalId = [];
+    let mangaResults = [];
+    for (const item of comickData) {
+      const title = item.md_comics.title;
+      const mangadexData = await fetchMangaDexData(title);
 
-  for (const entry of comickData) {
-    const title = entry.md_comics?.title;
-    if (title) {
-      const mangaDexData = await searchMangaDex(title);
+      const malId = mangadexData?.data?.[0]?.attributes?.links?.mal;
 
-      if (mangaDexData && mangaDexData.data[0]?.attributes?.links?.mal) {
-        entriesWithMalId.push({
-          title: title,
-          malId: mangaDexData.data[0].attributes.links.mal,
-          ...entry,
-        });
+      if (malId) {
+        mangaResults.push({ comickData: item, mangadexData });
+
+        if (mangaResults.length === 10) {
+          const { error } = await supabase
+          .from('all_cash')
+          .update({ json: mangaResults })
+          .eq('name', 'recently_updated')
+          console.log(error)
+          res.json("OK")
+        }
       }
-
-      if (entriesWithMalId.length >= 10) break;
     }
+
+    
+
+    
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to fetch data' });
   }
-
-  if (entriesWithMalId.length > 0) {
-    const { data, error } = await supabase
-      .from('all_cash')
-      .upsert(entriesWithMalId.map(entry => ({
-        name: entry.title,
-        recently_updated: entry,
-      })));
-
-    if (error) {
-      console.error(`Error inserting data into Supabase: ${error}`);
-    } else {
-      console.log(`Inserted ${entriesWithMalId.length} entries into Supabase.`);
-    }
-  }
-}
-
-// Set up cron job to run daily
+};
 cron.schedule('0 0 * * *', () => {
   console.log('Running daily job...');
-  processComickData();
+  xxxd();
 });
-
 
 module.exports = app;
