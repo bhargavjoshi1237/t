@@ -416,22 +416,29 @@ app.get('/homepage', async (req, res) => {
 
     for (const manga of trendingData) {
       if (count >= 10) break;
-
+    
       const title = manga.attributes.titles['en_us'] || manga.attributes.titles['en'];
       const mangaDexData = await searchMangaDex(title);
-
+      
       if (mangaDexData && mangaDexData.data && mangaDexData.data[0] && mangaDexData.data[0].attributes.links.mal) {
         const latestChapterId = mangaDexData.data[0].attributes.latestUploadedChapter;
         const atHomeServerData = await fetchAtHomeServer(latestChapterId);
-
+        
+        // Fetch Kitsu API data
+        const idx = manga.id; // Assuming you need the Kitsu ID for Kitsu API
+        const xpx = await axios.get('https://kitsu.io/api/edge/manga/' + idx);
+        
         combinedResponses.push({
           main: manga,
           mangadex: mangaDexData,
-          atHomeServer: atHomeServerData
+          atHomeServer: atHomeServerData,
+          full: xpx.data // Ensure only the data part of the response is added
         });
         count++;
       }
     }
+    
+    
 
     const response = {
       highestRated: highestRated.data,
