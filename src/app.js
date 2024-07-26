@@ -676,7 +676,72 @@ const variables = {
 };
 
 
+async function fetchComickData(url) {
+  try {
+    const response = await axios.get(url);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching data from Comick: ${error}`);
+    return null;
+  }
+}
 
+async function searchMangaDex(title) {
+  try {
+    const response = await axios.get(`https://api.mangadex.org/manga?title=${title}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching data from MangaDex: ${error}`);
+    return null;
+  }
+}
+
+async function processComickData() {
+  const comickUrl = 'https://api.comick.io/chapter?accept_erotic_content=true&page=1&device-memory=8&order=hot';
+  const comickData = await fetchComickData(comickUrl);
+
+  if (!comickData) return;
+
+  const entriesWithMalId = [];
+
+  for (const entry of comickData) {
+    const title = entry.md_comics?.title;
+    if (title) {
+      const mangaDexData = await searchMangaDex(title);
+
+      if (mangaDexData && mangaDexData.data[0]?.attributes?.links?.mal) {
+        entriesWithMalId.push({
+          title: title,
+          malId: mangaDexData.data[0].attributes.links.mal,
+          ...entry,
+        });
+      }
+
+      if (entriesWithMalId.length >= 10) break;
+    }
+  }
+
+  if (entriesWithMalId.length > 0) {
+    const { data, error } = await supabase
+      .from('all_cash')
+      .upsert(entriesWithMalId.map(entry => ({
+        name: entry.title,
+        recently_updated: entry,
+      })));
+
+    if (error) {
+      console.error(`Error inserting data into Supabase: ${error}`);
+    } else {
+      console.log(`Inserted ${entriesWithMalId.length} entries into Supabase.`);
+    }
+  }
+}
+
+// Set up cron job to run daily
+cron.schedule('0 0 * * *', () => {
+  console.log('Running daily job...');
+  processComickData();
+});
 
 
 module.exports = app;
