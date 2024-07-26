@@ -344,87 +344,11 @@ app.get('/abe/:name', async (req, res) => {
 
 
 
-app.get('/homepage', async (req, res) => {
-  const cachedData = cache.get('homepage');
-  if (cachedData) {
-    console.log("SENDED CASHED DATA")
-    return res.json(cachedData);
-  }
-  try {
-   
-    const [highestRated, topUpcoming, topPublishing, trendingThisWeek, anilist] = await Promise.all([
-      axios.get(urls.highestRated),
-      axios.get(urls.topUpcoming),
-      axios.get(urls.topPublishing),
-      axios.get(urls.trendingThisWeek),
-      axios(urls.anilist.url, urls.anilist.options)
-    ]);
-
-    const response = {
-      highestRated: highestRated.data,
-      topUpcoming: topUpcoming.data,
-      topPublishing: topPublishing.data,
-      trendingThisWeek: trendingThisWeek.data,
-      anilist: anilist.data
-    };
-    cache.set('homepage', response);
-    console.log("Date Cashed")
-    res.json(response);
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    res.status(500).json({ error: 'Failed to fetch data' });
-  }
-});
-
-app.get('/homepage', async (req, res) => {
-  try {
-    // Fetch data from AniList
-    const anilistResponse = await axios(anilistUrl, anilistOptions);
-    const anilistData = anilistResponse.data.data.Page.media;
-
-    // Fetch data from other sources
-    const [highestRated, topUpcoming, topPublishing, trendingThisWeek] = await Promise.all([
-      axios.get('https://kitsu.io/api/edge/manga?page%5Blimit%5D=5&sort=-average_rating'),
-      axios.get('https://kitsu.io/api/edge/manga?filter%5Bstatus%5D=upcoming&page%5Blimit%5D=5&sort=-user_count'),
-      axios.get('https://kitsu.io/api/edge/manga?page%5Blimit%5D=5&sort=-user_count'),
-      axios.get('https://kitsu.io/api/edge/trending/manga?limit=5')
-    ]);
-
-    // Process AniList data with MangaDex search
-    const combinedResponses = [];
-    for (const media of anilistData) {
-      const mangadexData = await searchMangaDex(media.title.userPreferred);
-      if (mangadexData) {
-        combinedResponses.push({
-          anilist: media,
-          mangadex: mangadexData
-        });
-      }
-    }
-
-    console.log(combinedResponses); // Log the combined responses
-
-    const response = {
-      highestRated: highestRated.data,
-      topUpcoming: topUpcoming.data,
-      topPublishing: topPublishing.data,
-      trendingThisWeek: trendingThisWeek.data,
-      anilist: combinedResponses
-    };
-
-    res.json(response);
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    res.status(500).json({ error: 'Failed to fetch data' });
-  }
-});
-
-
 const urls = {
   highestRated: 'https://kitsu.io/api/edge/manga?page%5Blimit%5D=10&sort=-average_rating',
   topUpcoming: 'https://kitsu.io/api/edge/manga?filter%5Bstatus%5D=upcoming&page%5Blimit%5D=10&sort=-user_count',
   topPublishing: 'https://kitsu.io/api/edge/manga?page%5Blimit%5D=10&sort=-user_count',
-  trendingThisWeek: 'https://kitsu.io/api/edge/trending/manga?limit=10',
+  trendingThisWeek: 'https://kitsu.io/api/edge/trending/manga?limit=20',
   anilist: {
     url: 'https://graphql.anilist.co',
     options: {
@@ -442,11 +366,93 @@ const urls = {
           type: 'MANGA',
           sort: ["TRENDING_DESC","POPULARITY_DESC"]
         }
-        
       })
     }
   }
 };
+
+async function searchMangaDex(title) {
+  try {
+    const url = `https://api.mangadex.org/manga?title=${encodeURIComponent(title)}&limit=1`;
+    const response = await fetch(url);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error(`Error fetching data from MangaDex: ${error}`);
+    return null;
+  }
+}
+async function fetchAtHomeServer(chapterId) {
+  try {
+    const url = `https://api.mangadex.org/at-home/server/${chapterId}`;
+    const response = await axios.get(url);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching at-home server data: ${error}`);
+    return null;
+  }
+}
+app.get('/homepage', async (req, res) => {
+  const cachedData = cache.get('homepage');
+  if (cachedData) {
+    console.log("SENDED CASHED DATA");
+    return res.json(cachedData);
+  }
+
+  try {
+    const [highestRated, topUpcoming, topPublishing, trendingThisWeek, anilist] = await Promise.all([
+      axios.get(urls.highestRated),
+      axios.get(urls.topUpcoming),
+      axios.get(urls.topPublishing),
+      axios.get(urls.trendingThisWeek),
+      axios(urls.anilist.url, urls.anilist.options)
+    ]);
+
+    const anilistData = anilist.data.data.Page.media;
+    
+    const trendingData = trendingThisWeek.data.data;
+    const combinedResponses = [];
+    let count = 0;
+
+    for (const manga of trendingData) {
+      if (count >= 10) break;
+
+      const title = manga.attributes.titles['en_us'] || manga.attributes.titles['en'];
+      const mangaDexData = await searchMangaDex(title);
+
+      if (mangaDexData && mangaDexData.data && mangaDexData.data[0] && mangaDexData.data[0].attributes.links.mal) {
+        const latestChapterId = mangaDexData.data[0].attributes.latestUploadedChapter;
+        const atHomeServerData = await fetchAtHomeServer(latestChapterId);
+
+        combinedResponses.push({
+          main: manga,
+          mangadex: mangaDexData,
+          atHomeServer: atHomeServerData
+        });
+        count++;
+      }
+    }
+
+    const response = {
+      highestRated: highestRated.data,
+      topUpcoming: topUpcoming.data,
+      topPublishing: combinedResponses,
+      trendingThisWeek: combinedResponses,
+      anilist: anilistData
+    };
+    const { error } = await supabase
+    .from('all_cash')
+    .update({ json: response })
+    .eq('name', 'carousel')
+    console.log(error)
+    cache.set('homepage', response);
+    console.log("Data Cached");
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
 
 app.get('/bw/:name', async (req, res) => {
   try {
