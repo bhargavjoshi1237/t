@@ -384,11 +384,13 @@ async function searchMangaDex(title) {
 }
 async function fetchAtHomeServer(chapterId) {
   try {
-    const url = `https://api.mangadex.org/at-home/server/${chapterId}`;
-    const response = await axios.get(url);
-    return response.data;
+    const response = await axios.get(`https://api.mangadex.org/at-home/server/${chapterId}`);
+    if (response.data && response.data.chapter && response.data.chapter.data.length >= 7) {
+      return response.data;
+    }
+    return null; // Return null if the required data is not present
   } catch (error) {
-    console.error(`Error fetching at-home server data: ${error}`);
+    console.error('Error fetching At Home Server data:', error);
     return null;
   }
 }
@@ -419,25 +421,26 @@ app.get('/homepage', async (req, res) => {
     
       const title = manga.attributes.titles['en_us'] || manga.attributes.titles['en'];
       const mangaDexData = await searchMangaDex(title);
-      
+    
       if (mangaDexData && mangaDexData.data && mangaDexData.data[0] && mangaDexData.data[0].attributes.links.mal) {
         const latestChapterId = mangaDexData.data[0].attributes.latestUploadedChapter;
         const atHomeServerData = await fetchAtHomeServer(latestChapterId);
-        
+    
+        if (!atHomeServerData) continue; // Skip entry if fetchAtHomeServer returns null
+    
         // Fetch Kitsu API data
         const idx = manga.id; // Assuming you need the Kitsu ID for Kitsu API
         const xpx = await axios.get('https://kitsu.io/api/edge/manga/' + idx);
-        
+    
         combinedResponses.push({
           main: manga,
           mangadex: mangaDexData,
           atHomeServer: atHomeServerData,
-          full: xpx.data // Ensure only the data part of the response is added
+          full: xpx.data, // Ensure only the data part of the response is added
         });
         count++;
       }
     }
-    
     
 
     const response = {
@@ -744,13 +747,13 @@ async function xxxd(){
       if (malId) {
         mangaResults.push({ comickData: item, mangadexData });
 
-        if (mangaResults.length === 10) {
+        if (mangaResults.length === 15) {
           const { error } = await supabase
           .from('all_cash')
           .update({ json: mangaResults })
           .eq('name', 'recently_updated')
           console.log(error)
-          res.json("OK")
+          
         }
       }
     }
