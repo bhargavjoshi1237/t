@@ -62,6 +62,7 @@ app.get('/bwd/:url', async (req, res) => {
 
     // Extracting the label content
     const label = $('#ctl00_phBody_ProductDetail_lblourPrice').text().trim();
+    const imgSrc = $('#ctl00_phBody_ProductDetail_imgProduct').attr('src');
 
     // Extracting book details
     const bookDetailDiv = $('#bookdetail');
@@ -115,6 +116,7 @@ app.get('/bwd/:url', async (req, res) => {
     // Constructing JSON response
     const responseData = {
       labelContent: label,
+      imgSrc: imgSrc,
       bookDetails: details,
       releaseLabel: release,
       paragraphs: aboutBookText,
