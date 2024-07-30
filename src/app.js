@@ -9,6 +9,7 @@ const NodeCache = require( "node-cache" );
 const cache = new NodeCache({ stdTTL: 86400 }); // TTL is 10 seconds
 const moment = require('moment');
 const { createClient } = require('@supabase/supabase-js');
+const { injectSpeedInsights } = require('@vercel/speed-insights'); // Import the function
 const cron = require('node-cron')
 const transporter = nodemailer.createTransport({
   host: 'smtp.resend.com',
@@ -30,7 +31,7 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Credentials', 'true');
   next();
 });
-
+injectSpeedInsights();
 const supabaseUrl = 'https://imyvybtnpcbilsvgelve.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlteXZ5YnRucGNiaWxzdmdlbHZlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyMDY0MjkzNiwiZXhwIjoyMDM2MjE4OTM2fQ.9i8lh1ajWsqeWLF1QtqsrGC-cj2RhETeoGwEl3_RNcA';  // Replace with your Supabase API Key
 const supabase = createClient(supabaseUrl, supabaseKey);
