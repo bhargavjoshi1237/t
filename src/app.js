@@ -771,9 +771,86 @@ async function xxxd(){
     res.status(500).json({ error: 'Failed to fetch data' });
   }
 };
+
+async function fetchHomepageData() {
+  try {
+    const [highestRated, topUpcoming, topPublishing, trendingThisWeek, anilist] = await Promise.all([
+      axios.get(urls.highestRated),
+      axios.get(urls.topUpcoming),
+      axios.get(urls.topPublishing),
+      axios.get(urls.trendingThisWeek),
+      axios(urls.anilist.url, urls.anilist.options)
+    ]);
+
+    const anilistData = anilist.data.data.Page.media;
+    const trendingData = trendingThisWeek.data.data;
+    const combinedResponses = [];
+    let count = 0;
+
+    for (const manga of trendingData) {
+      if (count >= 10) break;
+
+      const title = manga.attributes.titles['en_us'] || manga.attributes.titles['en'];
+      const mangaDexData = await searchMangaDex(title);
+
+      if (mangaDexData && mangaDexData.data && mangaDexData.data[0] && mangaDexData.data[0].attributes.links.mal) {
+        const latestChapterId = mangaDexData.data[0].attributes.latestUploadedChapter;
+        const atHomeServerData = await fetchAtHomeServer(latestChapterId);
+
+        if (!atHomeServerData) continue; // Skip entry if fetchAtHomeServer returns null
+
+        // Fetch Kitsu API data
+        const idx = manga.id; // Assuming you need the Kitsu ID for Kitsu API
+        const xpx = await axios.get('https://kitsu.io/api/edge/manga/' + idx);
+
+        combinedResponses.push({
+          main: manga,
+          mangadex: mangaDexData,
+          atHomeServer: atHomeServerData,
+          full: xpx.data, // Ensure only the data part of the response is added
+        });
+        count++;
+      }
+    }
+
+    const response = {
+      highestRated: highestRated.data,
+      topUpcoming: topUpcoming.data,
+      topPublishing: combinedResponses,
+      trendingThisWeek: combinedResponses,
+      anilist: anilistData
+    };
+
+    const { error } = await supabase
+      .from('all_cash')
+      .update({ json: response })
+      .eq('name', 'carousel');
+    console.log(error);
+
+    cache.set('homepage', response);
+    console.log("Data Cached");
+
+    return response;
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    throw new Error('Failed to fetch data');
+  }
+}
+
 cron.schedule('0 0 * * *', () => {
   console.log('Running daily job...');
   xxxd();
+  fetchHomepageData();
 });
+
+
+
+
+
+
+ 
+
+
+
 
 module.exports = app;
