@@ -3,7 +3,7 @@
   "version": "1.2.0",
   "description": "A basic starter for an express.js API",
   "main": "index.js",
-  "scripts": {  
+  "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "lint": "eslint --fix src",
@@ -17,10 +17,9 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@supabase/supabase-js": "^1.22.6",
     "@vercel/kv": "^0.2.4",
     "@vercel/speed-insights": "^1.0.12",
-    "axios": "^1.7.2",
+    "axios": "^1.7.3",
     "body-parser": "^1.20.2",
     "cheerio": "^1.0.0-rc.12",
     "cors": "^2.8.5",
@@ -50,7 +49,7 @@
     "x-ray": "^2.3.4"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "^1.22.6",
+    "@supabase/supabase-js": "^1.35.7",
     "eslint": "^8.42.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-plugin-import": "^2.27.5",

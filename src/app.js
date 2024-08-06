@@ -469,6 +469,45 @@ app.get('/homepage', async (req, res) => {
   }
 });
 
+async function fetchNewsData() {
+  try {
+      // Fetch recent news feeds
+      const response = await fetch('https://consumet-api-quvx.onrender.com/news/ann/recent-feeds');
+      const data = await response.json();
+      const newsData = data.slice(0, 12);
+
+      // Fetch detailed news data
+      const detailedDataPromises = newsData.map(async (item) => {
+          const response = await fetch(`https://consumet-api-quvx.onrender.com/news/ann/info?id=${item.id}`);
+          const detailedItem = await response.json();
+          return detailedItem;
+      });
+
+      const detailedNewsData = await Promise.all(detailedDataPromises);
+
+      // Update Supabase table
+      const { error } = await supabase
+      .from('all_cash')
+      .update({
+          json: detailedNewsData,
+      })
+      .eq('name', 'news');
+
+
+      if (error) {
+          console.error('Error updating Supabase:', error);
+      } else {
+          console.log('Supabase updated successfully with news data.');
+      }
+  } catch (error) {
+      console.error('Error fetching news data:', error);
+  }
+}
+
+// Schedule the function to run every 2 hours
+cron.schedule('0 */2 * * *', fetchNewsData);
+
+
 app.get('/bw/:name', async (req, res) => {
   try {
     const { name } = req.params;
