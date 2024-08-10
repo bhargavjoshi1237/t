@@ -593,58 +593,82 @@ app.get('/isbn/:name', async (req, res) => {
   }
 });
 
-async function checkPrices() {
+async function fetchBookswagonPrice(isbn) {
   try {
-    const { data, error } = await supabase
-      .from('watchlist')
-      .select();
+      const url = `https://www.bookswagon.com/search-books/${isbn}`;
+      const response = await axios.get(url);
+      const html = response.data;
+      const $ = cheerio.load(html);
 
-    if (error) {
-      console.error('Error fetching watchlist:', error);
-      return;
-    }
-    const priceChanges = [];
-    for (const item of data) {
-      if (item.platform === 'amazon') {
-        const currentPrice = await amazonfetch(item.isbn);
-        const currentPrices = parseInt(currentPrice.substring(1))
-        const oldPrice = (item.price_when_added);
-        console.log(currentPrices,oldPrice)
-        if (currentPrices < oldPrice ) {
-          console.log("Price Changed REPOT CREATING")
-          const priceChange = {
-            title: item.title,
-            oldPrice: oldPrice,
-            newPrice: currentPrices,
-            isbn: item.isbn,
-            link: item.link,
-            email: item.email,
-          };
+      // Select the price using the specified id
+      const priceText = $('#ctl00_phBody_ProductDetail_lblourPrice').text().trim();
 
-          priceChanges.push(priceChange);
+      // Remove the rupee symbol and parse the price to an integer
+      const currentPrice = parseInt(priceText.replace(/[^0-9]/g, ''), 10);
 
-          // Send email notification
-          await sendEmailNotification(item.email, 'Price Drop Alert', `The price of ${item.title} has dropped from ₹${oldPrice} to ₹${currentPrice}. Check it out here: ${item.link}`);
-        }
-      }
-    }
-
-    if (priceChanges.length > 0) {
-      // Insert price change report into PriceHistory table
-      const { error: insertError } = await supabase.from('pricehistory').insert([{ report: priceChanges, date:Date() }]);
-      if (insertError) throw insertError;
-
-      console.log('Price change report inserted into PriceHistory table');
-    }
+      return currentPrice;
   } catch (error) {
-    console.error('Error in checkPrices:', error);
+      console.error('Error fetching Bookswagon price:', error);
+      return null;
   }
 }
+
+async function checkPrices() {
+try {
+  const { data, error } = await supabase
+    .from('watchlist')
+    .select();
+
+  if (error) {
+    console.error('Error fetching watchlist:', error);
+    return;
+  }
+
+  const priceChanges = [];
+  for (const item of data) {
+    if (item.platform === 'bookswagon') {
+      const currentPrice = await fetchBookswagonPrice(item.isbn);
+      const oldPrice = item.price_when_added;
+
+      console.log(currentPrice, oldPrice);
+
+      if (currentPrice < oldPrice) {
+        console.log('Price Changed, REPORT CREATING');
+        
+        const priceChange = {
+          title: item.title,
+          oldPrice: oldPrice,
+          newPrice: currentPrice,
+          isbn: item.isbn,
+          link: item.link,
+          email: item.email,
+        };
+
+        priceChanges.push(priceChange);
+
+        // Send email notification
+        await sendEmailNotification(item.email, 'Price Drop Alert', `The price of ${item.title} has dropped from ₹${oldPrice} to ₹${currentPrice}. Check it out here: ${item.link}`);
+      }
+    }
+  }
+
+  if (priceChanges.length > 0) {
+    // Insert price change report into PriceHistory table
+    const { error: insertError } = await supabase.from('pricehistory').insert([{ report: priceChanges, date: new Date() }]);
+    if (insertError) throw insertError;
+
+    console.log('Price change report inserted into PriceHistory table');
+  }
+} catch (error) {
+  console.error('Error in checkPrices:', error);
+}
+}
+
 
 // sendEmailNotification("bhargavjoshi1237@gmail.com")
 async function sendEmailNotification(email,title,price) {
   const mailOptions = {
-    from: 'onboarding@animealley.online',
+    from: 'pricedrop@animealley.online',
     to: email,
     subject: `${title} price drop alert!`,
     text: `The price of ${title} has dropped to ${price}!`,
@@ -659,10 +683,10 @@ async function sendEmailNotification(email,title,price) {
     console.error('Error sending email:', error);
   }
 }
-// cron.schedule('0 0 * * *', () => {
-//   console.log('Running price check...');
-//   checkPrices();
-// });
+cron.schedule('0 0 * * *', () => {
+  console.log('Running price check...');
+  checkPrices();
+});
 
 async function amazonfetch(isbn){
  
