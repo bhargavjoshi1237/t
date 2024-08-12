@@ -4,10 +4,10 @@
   "description": "A basic starter for an express.js API",
   "main": "index.js",
   "scripts": {
-    "prestart": "npm @puppeteer/browser install chrome@stable",
-    "postbuild": "npm @puppeteer/browser install chrome@stable",
+    "prestart": "npx puppeteer browsers install chrome",
+    "postbuild": "npx puppeteer browsers install chrome",
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "dev": "nodemon src/index.js && npx puppeteer browsers install chrome",
     "lint": "eslint --fix src",
     "test": "jest"
   },
