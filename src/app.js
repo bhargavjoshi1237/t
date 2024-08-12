@@ -338,10 +338,10 @@ app.get('/abe/:name', async (req, res) => {
 
 
 const urls = {
-  highestRated: 'https://kitsu.io/api/edge/manga?page%5Blimit%5D=10&sort=-average_rating',
-  topUpcoming: 'https://kitsu.io/api/edge/manga?filter%5Bstatus%5D=upcoming&page%5Blimit%5D=10&sort=-user_count',
-  topPublishing: 'https://kitsu.io/api/edge/manga?page%5Blimit%5D=10&sort=-user_count',
-  trendingThisWeek: 'https://kitsu.io/api/edge/trending/manga?limit=20',
+  highestRated: 'https://kitsu.app/api/edge/manga?page%5Blimit%5D=10&sort=-average_rating',
+  topUpcoming: 'https://kitsu.app/api/edge/manga?filter%5Bstatus%5D=upcoming&page%5Blimit%5D=10&sort=-user_count',
+  topPublishing: 'https://kitsu.app/api/edge/manga?page%5Blimit%5D=10&sort=-user_count',
+  trendingThisWeek: 'https://kitsu.app/api/edge/trending/manga?limit=20',
   anilist: {
     url: 'https://graphql.anilist.co',
     options: {
@@ -423,7 +423,7 @@ app.get('/homepage', async (req, res) => {
     
         // Fetch Kitsu API data
         const idx = manga.id; // Assuming you need the Kitsu ID for Kitsu API
-        const xpx = await axios.get('https://kitsu.io/api/edge/manga/' + idx);
+        const xpx = await axios.get('https://kitsu.app/api/edge/manga/' + idx);
     
         combinedResponses.push({
           main: manga,
@@ -493,7 +493,7 @@ async function fetchNewsData() {
 }
 
 // Schedule the function to run every 2 hours
-cron.schedule('0 */2 * * *', fetchNewsData);
+// cron.schedule('0 */2 * * *', fetchNewsData);
 
 
 app.get('/bw/:name', async (req, res) => {
@@ -852,7 +852,7 @@ async function fetchHomepageData() {
 
         // Fetch Kitsu API data
         const idx = manga.id; // Assuming you need the Kitsu ID for Kitsu API
-        const xpx = await axios.get('https://kitsu.io/api/edge/manga/' + idx);
+        const xpx = await axios.get('https://kitsu.app/api/edge/manga/' + idx);
 
         combinedResponses.push({
           main: manga,
