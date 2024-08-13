@@ -612,7 +612,6 @@ async function fetchBookswagonPrice(isbn) {
       return null;
   }
 }
-
 async function checkPrices() {
 try {
   const { data, error } = await supabase
@@ -636,18 +635,19 @@ try {
         console.log('Price Changed, REPORT CREATING');
         
         const priceChange = {
-          title: item.title,
+          title: item.name,
+          img: item.img,
           oldPrice: oldPrice,
           newPrice: currentPrice,
           isbn: item.isbn,
           link: item.link,
           email: item.email,
         };
-
+        console.log(priceChange)
         priceChanges.push(priceChange);
 
         // Send email notification
-        await sendEmailNotification(item.email, 'Price Drop Alert', `The price of ${item.title} has dropped from ₹${oldPrice} to ₹${currentPrice}. Check it out here: ${item.link}`);
+        await sendEmailNotification(currentPrice,priceChange ,item.email, 'Price Drop Alert', `The price of ${item.title} has dropped from ₹${oldPrice} to ₹${currentPrice}. Check it out here: <a href="${item.link}">Visit</a/>`);
       }
     }
   }
@@ -664,59 +664,59 @@ try {
 }
 }
 
+// checkPrices();
 
 // sendEmailNotification("bhargavjoshi1237@gmail.com")
-async function sendEmailNotification(email,title,price) {
+async function sendEmailNotification(currentPrice,all,email,title,price) {
   const mailOptions = {
-    from: 'mangafusion@animealley.online',
+    from: 'MangaFusion@animealley.online',
     to: email,
-    subject: `📉 ${title} Price Drop Alert: Your Watchlisted Book is Now Cheaper!`,
-    text: `Dear ${email} ,The price of ${title} has dropped to ${price}!`,
+    subject: `${(all.title).substring(0,20)} Price Drop Alert: Your Watchlisted Book is Now Cheaper!`,
+    text: `Dear ${email} ,The price of ${all.title} has dropped to ${currentPrice}!`,
     html: `<section class="max-w-2xl px-6 py-8 mx-auto bg-white dark:bg-gray-900">
     <header>
         <a href="#">
-            <img class="w-auto h-7 sm:h-8" src="https://animealley.online/logo.png" alt="">
+            <img class="w-[40px] h-[40px]" src="${all.img}" alt="">
         </a>
     </header>
 
     <main class="mt-8">
-        <h2 class="text-gray-700 dark:text-gray-200">Hi ${email},</h2>
+        <h2 class="text-gray-700 dark:text-gray-200">Hi ${email}, The price of the book you've been keeping an eye on, ${all.title}, has just dropped.</h2>
 
         <p class="mt-2 leading-loose text-gray-600 dark:text-gray-300">
         We have great news! 🎉
 
-The price of the book you've been keeping an eye on, ${title}, has just dropped.
+The price of the book you've been keeping an eye on, ${all.title}, has just dropped.
           
         </p>
            <p class="mt-4 leading-loose text-gray-600 dark:text-gray-300">
-            The Price of ${title} is dropped from when you added to your WatchList on MangaFusion.
+            The Price of ${all.title} is dropped from when you added to your WatchList on MangaFusion.
         </p>
-       <h3>📚 <strong>Book Details:</strong></h3>
-       <ul><li><strong>Current Price:</strong> [Current Price]</li><li><strong>Original Price:</strong> [Original Price]</li><li><strong>Platform:</strong> [Platform]</li><li><strong>ISBN:</strong> [ISBN]</li></ul>
-       <p>You can view and purchase the book using the following link: ${link}</p>
+       <h3>📚 <strong>Book Details:</strong></h3>currentPrice
+       <ul><li><strong>Original Price:</strong> ${price}</li><li><strong>Current Price:</strong> ${currentPrice}</li><li><strong>Platform:</strong> Bookswagon!</li><li><strong>Name:</strong> ${title}</li></ul>
        <p>Don’t miss out on this opportunity to grab your book at a lower price. Happy reading!</p>
-        <button class="px-6 py-2 mt-6 text-sm font-medium tracking-wider text-white capitalize transition-colors duration-300 transform bg-blue-600 rounded-lg hover:bg-blue-500 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-80">
+        <a href="https://mangafusion.vercel.app/"><button class="px-6 py-2 mt-6 text-sm font-medium tracking-wider text-white capitalize transition-colors duration-300 transform bg-blue-600 rounded-lg hover:bg-blue-500 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-80">
            Visit Manga Fusion
-        </button>
+        </button> </a>
         <br />
-        <p>Best regards,<br>[Your Company Name] Team</p>
+        <p>Best regards,<br>MangaFusion Team</p>
         <br />
         <hr />
-        <p><strong>Note:</strong> This email was sent to you because you added this book to your watchlist on [Your Platform Name]. If you no longer wish to receive notifications about price changes, you can manage your preferences in your account settings.</p>
+        <p><strong>Note:</strong> This email was sent to you because you added this book to your watchlist on MangaFusion. If you no longer wish to receive notifications about price changes, you can manage your preferences in your account settings.</p>
         <p class="mt-8 text-gray-600 dark:text-gray-300">
             Thanks, <br>
-            Meraki UI team
+           MangaFusion Team
         </p>
     </main>
     
 
     <footer class="mt-8">
         <p class="text-gray-500 dark:text-gray-400">
-            This email was sent to <a href="#" class="text-blue-600 hover:underline dark:text-blue-400" target="_blank">contact@merakiui.com</a>. 
-            If you'd rather not receive this kind of email, you can <a href="#" class="text-blue-600 hover:underline dark:text-blue-400">unsubscribe</a> or <a href="#" class="text-blue-600 hover:underline dark:text-blue-400">manage your email preferences</a>.
+            This email was sent to <a href="#" class="text-blue-600 hover:underline dark:text-blue-400" target="_blank">${email}</a>. 
+            If you'd rather not receive this kind of email, you can unsubscribe or manage your email preferences.
         </p>
 
-        <p class="mt-3 text-gray-500 dark:text-gray-400">© {{ new Date().getFullYear() }} Meraki UI. All Rights Reserved.</p>
+        <p class="mt-3 text-gray-500 dark:text-gray-400">© ${ new Date().getFullYear() } MangaFusion. All Rights Reserved.</p>
     </footer>
 </section>`
   };
