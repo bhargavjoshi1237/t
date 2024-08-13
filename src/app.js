@@ -671,7 +671,7 @@ async function sendEmailNotification(currentPrice,all,email,title,price) {
   const mailOptions = {
     from: 'MangaFusion@animealley.online',
     to: email,
-    subject: `${(all.title).substring(0,20)} Price Drop Alert: Your Watchlisted Book is Now Cheaper!`,
+    subject: `📉${(all.title).substring(0,50)+"..."} Price Drop Alert: Your Watchlisted Book is Now Cheaper!`,
     text: `Dear ${email} ,The price of ${all.title} has dropped to ${currentPrice}!`,
     html: `<section class="max-w-2xl px-6 py-8 mx-auto bg-white dark:bg-gray-900">
     <header>
