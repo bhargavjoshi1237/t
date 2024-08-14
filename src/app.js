@@ -910,12 +910,53 @@ async function fetchHomepageData() {
       }
     }
 
+    const combinedAniListResponses = [];
+    for (const media of anilistData) {
+      const title = media.title.userPreferred || media.title.romaji;
+      const mangaDexData = await searchMangaDex(title);
+
+      if (mangaDexData && mangaDexData.data && mangaDexData.data[0] && mangaDexData.data[0].attributes.links.mal) {
+        combinedAniListResponses.push({
+          anilist: media,
+          mangadex: mangaDexData
+        });
+      } else {
+        combinedAniListResponses.push({
+          anilist: media
+        });
+      }
+    }
+
+    const combineData = async (data) => {
+      const combinedResponses = [];
+      for (const item of data) {
+        const title = item.attributes.titles['en_us'] || item.attributes.titles['en'];
+        const mangaDexData = await searchMangaDex(title);
+
+        if (mangaDexData && mangaDexData.data && mangaDexData.data[0] && mangaDexData.data[0].attributes.links.mal) {
+          combinedResponses.push({
+            main: item,
+            mangadex: mangaDexData
+          });
+        } else {
+          combinedResponses.push({
+            main: item
+          });
+        }
+      }
+      return combinedResponses;
+    };
+
+    const combinedHighestRated = await combineData(highestRated.data.data);
+    const combinedTopUpcoming = await combineData(topUpcoming.data.data);
+    const combinedTopPublishing = await combineData(topPublishing.data.data);
+
     const response = {
-      highestRated: highestRated.data,
-      topUpcoming: topUpcoming.data,
-      topPublishing: combinedResponses,
+      highestRated: combinedHighestRated,
+      topUpcoming: topUpcoming.data.data,
+      topPublishing: combinedTopPublishing,
       trendingThisWeek: combinedResponses,
-      anilist: anilistData
+      anilist: combinedAniListResponses
     };
 
     const { error } = await supabase
@@ -933,7 +974,8 @@ async function fetchHomepageData() {
     throw new Error('Failed to fetch data');
   }
 }
- 
+
+fetchHomepageData()
 cron.schedule('0 0 * * *', () => {
   console.log('Running daily job...');
   xxxd();
