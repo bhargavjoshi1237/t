@@ -629,7 +629,7 @@ try {
       const currentPrice = await fetchBookswagonPrice(item.isbn);
       const oldPrice = item.price_when_added;
 
-      console.log(currentPrice, oldPrice);
+      // console.log(currentPrice, oldPrice);
 
       if (currentPrice < oldPrice) {
         console.log('Price Changed, REPORT CREATING');
@@ -643,7 +643,7 @@ try {
           link: item.link,
           email: item.email,
         };
-        console.log(priceChange)
+        // console.log(priceChange)
         priceChanges.push(priceChange);
 
         // Send email notification
@@ -733,7 +733,11 @@ cron.schedule('0 0 * * *', () => {
   console.log('Running price check...');
   checkPrices();
 });
-
+app.get('/check-prices', (req, res) => {
+  console.log("Running Price Check");
+  checkPrices();
+  res.send('Price check initiated');
+});
 async function amazonfetch(isbn){
  
     const url = `https://www.amazon.in/s?k=${isbn+" Paperback"}`;
@@ -777,7 +781,7 @@ async function amazonfetch(isbn){
     // Prepare the response
   
      const price = prices[0] || 'N/A' 
-      console.log(price)
+      // console.log(price)
       return price
    
   }
