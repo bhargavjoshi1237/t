@@ -736,6 +736,8 @@ cron.schedule('0 0 * * *', () => {
 app.get('/check-prices', (req, res) => {
   console.log("Running Price Check");
   checkPrices();
+  xxxd();
+  fetchHomepageData();
   res.send('Price check initiated');
 });
 async function amazonfetch(isbn){
