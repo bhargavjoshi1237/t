@@ -25,7 +25,7 @@ const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   // CORS headers for allowing cross-origin requests
-  res.header('Access-Control-Allow-Origin', 'https://wss-hqv8eibx9-bhargavjoshi1237.vercel.app');
+  res.header('Access-Control-Allow-Origin', 'https://wss-hqv8eibx9-bhargavjoshi1237.vercel.io');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -338,10 +338,10 @@ app.get('/abe/:name', async (req, res) => {
 
 
 const urls = {
-  highestRated: 'https://kitsu.app/api/edge/manga?page%5Blimit%5D=10&sort=-average_rating',
-  topUpcoming: 'https://kitsu.app/api/edge/manga?filter%5Bstatus%5D=upcoming&page%5Blimit%5D=10&sort=-user_count',
-  topPublishing: 'https://kitsu.app/api/edge/manga?page%5Blimit%5D=10&sort=-user_count',
-  trendingThisWeek: 'https://kitsu.app/api/edge/trending/manga?limit=20',
+  highestRated: 'https://kitsu.io/api/edge/manga?page%5Blimit%5D=10&sort=-average_rating',
+  topUpcoming: 'https://kitsu.io/api/edge/manga?filter%5Bstatus%5D=upcoming&page%5Blimit%5D=10&sort=-user_count',
+  topPublishing: 'https://kitsu.io/api/edge/manga?page%5Blimit%5D=10&sort=-user_count',
+  trendingThisWeek: 'https://kitsu.io/api/edge/trending/manga?limit=20',
   anilist: {
     url: 'https://graphql.anilist.co',
     options: {
@@ -423,7 +423,7 @@ app.get('/homepage', async (req, res) => {
     
         // Fetch Kitsu API data
         const idx = manga.id; // Assuming you need the Kitsu ID for Kitsu API
-        const xpx = await axios.get('https://kitsu.app/api/edge/manga/' + idx);
+        const xpx = await axios.get('https://kitsu.io/api/edge/manga/' + idx);
     
         combinedResponses.push({
           main: manga,
@@ -695,7 +695,7 @@ The price of the book you've been keeping an eye on, ${all.title}, has just drop
        <h3>📚 <strong>Book Details:</strong></h3>currentPrice
        <ul><li><strong>Original Price:</strong> ${price}</li><li><strong>Current Price:</strong> ${currentPrice}</li><li><strong>Platform:</strong> Bookswagon!</li><li><strong>Name:</strong> ${title}</li></ul>
        <p>Don’t miss out on this opportunity to grab your book at a lower price. Happy reading!</p>
-        <a href="https://mangafusion.vercel.app/"><button class="px-6 py-2 mt-6 text-sm font-medium tracking-wider text-white capitalize transition-colors duration-300 transform bg-blue-600 rounded-lg hover:bg-blue-500 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-80">
+        <a href="https://mangafusion.vercel.io/"><button class="px-6 py-2 mt-6 text-sm font-medium tracking-wider text-white capitalize transition-colors duration-300 transform bg-blue-600 rounded-lg hover:bg-blue-500 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-80">
            Visit Manga Fusion
         </button> </a>
         <br />
@@ -904,7 +904,7 @@ async function fetchHomepageData() {
 
         // Fetch Kitsu API data
         const idx = manga.id; // Assuming you need the Kitsu ID for Kitsu API
-        const xpx = await axios.get('https://kitsu.app/api/edge/manga/' + idx);
+        const xpx = await axios.get('https://kitsu.io/api/edge/manga/' + idx);
 
         combinedResponses.push({
           main: manga,
