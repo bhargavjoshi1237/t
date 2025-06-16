@@ -20,6 +20,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 const bodyParser = require('body-parser');
+const sharp = require('sharp');
 // Create a single supabase client for interacting with your database
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -376,16 +377,67 @@ async function searchMangaDex(title) {
   }
 }
 async function fetchAtHomeServer(chapterId) {
-  try {
-    const response = await axios.get(`https://api.mangadex.org/at-home/server/${chapterId}`);
-    if (response.data && response.data.chapter && response.data.chapter.data.length >= 7) {
-      return response.data;
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second delay between retries
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await axios.get(`https://api.mangadex.org/at-home/server/${chapterId}`, {
+        timeout: 10000, // 10 second timeout
+        headers: {
+          'User-Agent': 'MangaFusion/1.0'
+        }
+      });
+
+      if (response.data && response.data.chapter && response.data.chapter.data.length >= 7) {
+        const baseUrl = response.data.baseUrl;
+        const hash = response.data.chapter.hash;
+        const data = response.data.chapter.data;
+
+        // Process only first 7 images
+        const processedImages = await Promise.all(
+          data.slice(0, 7).map(async (filename) => {
+            const imageUrl = `${baseUrl}/data/${hash}/${filename}`;
+            try {
+              const imageResponse = await axios.get(imageUrl, { 
+                responseType: 'arraybuffer',
+                timeout: 10000 
+              });
+              
+              const compressedImage = await sharp(imageResponse.data)
+                .resize(400)
+                .jpeg({ quality: 20 })
+                .toBuffer();
+              
+              return `data:image/jpeg;base64,${compressedImage.toString('base64')}`;
+            } catch (error) {
+              console.error(`Error processing image ${filename}:`, error);
+              return null;
+            }
+          })
+        );
+
+        const validImages = processedImages.filter(img => img !== null);
+        
+        return {
+          ...response.data,
+          chapter: {
+            ...response.data.chapter,
+            processedImages: validImages
+          }
+        };
+      }
+      return null;
+    } catch (error) {
+      if (attempt === maxRetries) {
+        console.error(`Final attempt failed for chapter ${chapterId}:`, error.message);
+        return null;
+      }
+      console.warn(`Attempt ${attempt} failed for chapter ${chapterId}, retrying...`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
     }
-    return null; // Return null if the required data is not present
-  } catch (error) {
-    console.error('Error fetching At Home Server data:', error);
-    return null;
   }
+  return null;
 }
 app.get('/homepage', async (req, res) => {
   const cachedData = cache.get('homepage');

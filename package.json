@@ -45,6 +45,7 @@
     "requests": "^0.3.0",
     "resend": "^3.4.0",
     "scrape-html-web": "^0.1.2",
+    "sharp": "^0.34.2",
     "vercel": "^33.7.1",
     "wikipedia": "^2.1.2",
     "wtf_wikipedia": "^10.3.2",
